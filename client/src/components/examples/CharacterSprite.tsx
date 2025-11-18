@@ -1,5 +1,5 @@
 import CharacterSprite from '../CharacterSprite';
-import playerImage from '@assets/generated_images/Player_hero_character_sprite_45d74b4e.png';
+import playerImage from '@assets/generated_images/Jesus_Christ_hero_character_18feb63e.png';
 
 export default function CharacterSpriteExample() {
   return (

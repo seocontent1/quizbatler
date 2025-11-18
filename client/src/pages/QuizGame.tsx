@@ -5,6 +5,7 @@ import AnswerButton from "@/components/AnswerButton";
 import ScoreDisplay from "@/components/ScoreDisplay";
 import GameOverModal from "@/components/GameOverModal";
 import StartScreen from "@/components/StartScreen";
+import Timer from "@/components/Timer";
 import { Progress } from "@/components/ui/progress";
 
 //todo: remove mock functionality - replace with real quiz questions from backend
@@ -98,6 +99,8 @@ export default function QuizGame() {
   const [playerAnimation, setPlayerAnimation] = useState<AnimationState>("idle");
   const [opponentAnimation, setOpponentAnimation] = useState<AnimationState>("idle");
   const [questionVisible, setQuestionVisible] = useState(true);
+  const [timerReset, setTimerReset] = useState(false);
+  const [timerPaused, setTimerPaused] = useState(false);
 
   const currentQuestion = MOCK_QUESTIONS[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / MOCK_QUESTIONS.length) * 100;
@@ -127,6 +130,7 @@ export default function QuizGame() {
   const handleAnswer = (answerIndex: number) => {
     if (selectedAnswer !== null) return;
 
+    setTimerPaused(true);
     setSelectedAnswer(answerIndex);
     const isCorrect = answerIndex === currentQuestion.correctAnswer;
 
@@ -164,6 +168,38 @@ export default function QuizGame() {
         setSelectedAnswer(null);
         setAnswerState("default");
         setQuestionVisible(true);
+        setTimerReset(!timerReset);
+        setTimerPaused(false);
+      } else {
+        setTimeout(() => {
+          setGameState("gameover");
+        }, 500);
+      }
+    }, 1800);
+  };
+
+  const handleTimeout = () => {
+    if (selectedAnswer !== null) return;
+
+    setTimerPaused(true);
+    setCurrentStreak(0);
+    
+    setTimeout(() => setOpponentAnimation("attack"), 200);
+    setTimeout(() => setPlayerAnimation("hit"), 400);
+    setTimeout(() => {
+      setPlayerLives((prev) => Math.max(0, prev - 1));
+      setPlayerAnimation("idle");
+      setOpponentAnimation("idle");
+    }, 800);
+
+    setTimeout(() => {
+      if (currentQuestionIndex < MOCK_QUESTIONS.length - 1) {
+        setCurrentQuestionIndex((prev) => prev + 1);
+        setSelectedAnswer(null);
+        setAnswerState("default");
+        setQuestionVisible(true);
+        setTimerReset(!timerReset);
+        setTimerPaused(false);
       } else {
         setTimeout(() => {
           setGameState("gameover");
@@ -200,12 +236,6 @@ export default function QuizGame() {
 
   return (
     <div className="min-h-screen p-4 bg-gradient-to-b from-background via-background to-muted/10">
-      <ScoreDisplay
-        correctAnswers={correctAnswers}
-        currentStreak={currentStreak}
-        totalScore={score}
-      />
-
       <div className="max-w-6xl mx-auto pt-8">
         <Progress value={progress} className="mb-8 h-2" data-testid="progress-quiz" />
 
@@ -226,23 +256,38 @@ export default function QuizGame() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-          {currentQuestion.options.map((option, index) => (
-            <AnswerButton
-              key={index}
-              text={option}
-              onClick={() => handleAnswer(index)}
-              state={
-                selectedAnswer === null
-                  ? "default"
-                  : selectedAnswer === index
-                  ? answerState
-                  : "default"
-              }
-              disabled={selectedAnswer !== null}
-              index={index}
-            />
-          ))}
+        <div className="max-w-3xl mx-auto space-y-6">
+          <ScoreDisplay
+            correctAnswers={correctAnswers}
+            currentStreak={currentStreak}
+            totalScore={score}
+          />
+
+          <Timer 
+            duration={7}
+            onTimeout={handleTimeout}
+            isPaused={timerPaused}
+            reset={timerReset}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {currentQuestion.options.map((option, index) => (
+              <AnswerButton
+                key={index}
+                text={option}
+                onClick={() => handleAnswer(index)}
+                state={
+                  selectedAnswer === null
+                    ? "default"
+                    : selectedAnswer === index
+                    ? answerState
+                    : "default"
+                }
+                disabled={selectedAnswer !== null}
+                index={index}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
