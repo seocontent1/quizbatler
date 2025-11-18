@@ -190,6 +190,10 @@ export default function QuizGame() {
     resetGame();
   };
 
+  const handleClose = () => {
+    setGameState("start");
+  };
+
   if (gameState === "start") {
     return <StartScreen onStart={handleStart} />;
   }
@@ -249,6 +253,7 @@ export default function QuizGame() {
         correctAnswers={correctAnswers}
         totalQuestions={MOCK_QUESTIONS.length}
         onRestart={handleRestart}
+        onClose={handleClose}
       />
     </div>
   );

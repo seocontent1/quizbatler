@@ -20,22 +20,22 @@ export default function BattleArena({
 }: BattleArenaProps) {
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <div className="flex justify-between items-start mb-8">
-        <div className="flex flex-col items-start gap-4">
-          <CharacterSprite
-            type="opponent"
-            animationState={opponentAnimation}
-            imageSrc={opponentImage}
-          />
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col items-center gap-4">
           <HealthBar
             characterName="Dark Lord"
             currentLives={opponentLives}
             maxLives={maxLives}
             type="opponent"
           />
+          <CharacterSprite
+            type="opponent"
+            animationState={opponentAnimation}
+            imageSrc={opponentImage}
+          />
         </div>
 
-        <div className="flex flex-col items-end gap-4 mt-32">
+        <div className="flex flex-col items-center gap-4">
           <HealthBar
             characterName="Hero"
             currentLives={playerLives}

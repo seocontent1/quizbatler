@@ -15,6 +15,7 @@ interface GameOverModalProps {
   correctAnswers: number;
   totalQuestions: number;
   onRestart: () => void;
+  onClose: () => void;
 }
 
 export default function GameOverModal({
@@ -24,11 +25,12 @@ export default function GameOverModal({
   correctAnswers,
   totalQuestions,
   onRestart,
+  onClose,
 }: GameOverModalProps) {
   const accuracy = Math.round((correctAnswers / totalQuestions) * 100);
 
   return (
-    <Dialog open={isOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md" data-testid="modal-gameover">
         <DialogHeader>
           <div className="flex justify-center mb-4">

@@ -18,6 +18,7 @@ export default function GameOverModalExample() {
           console.log('Restarting game...');
           setIsOpen(false);
         }}
+        onClose={() => setIsOpen(false)}
       />
     </div>
   );
