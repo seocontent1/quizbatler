@@ -124,6 +124,7 @@ export default function QuizGame() {
     setPlayerAnimation("idle");
     setOpponentAnimation("idle");
     setQuestionVisible(true);
+    setTimerPaused(false);
     setQuestionStartTime(Date.now());
   };
 
@@ -142,19 +143,17 @@ export default function QuizGame() {
       setCurrentStreak((prev) => prev + 1);
       
       let damage = 10;
-      if (timeTaken <= 1) {
-        damage = 2;
-      } else if (timeTaken <= 2) {
+      if (timeTaken < 2) {
         damage = 3;
-      } else if (timeTaken <= 3) {
+      } else if (timeTaken >= 2 && timeTaken < 5) {
         damage = 4;
-      } else if (timeTaken <= 4) {
+      } else if (timeTaken >= 5 && timeTaken < 8) {
         damage = 6;
-      } else {
+      } else if (timeTaken >= 8 && timeTaken <= 10) {
         damage = 10;
       }
       
-      const points = 100 + currentStreak * 10 + Math.floor((7 - timeTaken) * 10);
+      const points = 100 + currentStreak * 10 + Math.floor((10 - timeTaken) * 10);
       setScore((prev) => prev + points);
 
       setQuestionVisible(false);
@@ -179,19 +178,13 @@ export default function QuizGame() {
     }
 
     setTimeout(() => {
-      if (currentQuestionIndex < MOCK_QUESTIONS.length - 1) {
-        setCurrentQuestionIndex((prev) => prev + 1);
-        setSelectedAnswer(null);
-        setAnswerState("default");
-        setQuestionVisible(true);
-        setTimerReset(!timerReset);
-        setTimerPaused(false);
-        setQuestionStartTime(Date.now());
-      } else {
-        setTimeout(() => {
-          setGameState("gameover");
-        }, 500);
-      }
+      setCurrentQuestionIndex((prev) => (prev + 1) % MOCK_QUESTIONS.length);
+      setSelectedAnswer(null);
+      setAnswerState("default");
+      setQuestionVisible(true);
+      setTimerReset(!timerReset);
+      setTimerPaused(false);
+      setQuestionStartTime(Date.now());
     }, 1800);
   };
 
@@ -210,19 +203,13 @@ export default function QuizGame() {
     }, 800);
 
     setTimeout(() => {
-      if (currentQuestionIndex < MOCK_QUESTIONS.length - 1) {
-        setCurrentQuestionIndex((prev) => prev + 1);
-        setSelectedAnswer(null);
-        setAnswerState("default");
-        setQuestionVisible(true);
-        setTimerReset(!timerReset);
-        setTimerPaused(false);
-        setQuestionStartTime(Date.now());
-      } else {
-        setTimeout(() => {
-          setGameState("gameover");
-        }, 500);
-      }
+      setCurrentQuestionIndex((prev) => (prev + 1) % MOCK_QUESTIONS.length);
+      setSelectedAnswer(null);
+      setAnswerState("default");
+      setQuestionVisible(true);
+      setTimerReset(!timerReset);
+      setTimerPaused(false);
+      setQuestionStartTime(Date.now());
     }, 1800);
   };
 
@@ -284,7 +271,7 @@ export default function QuizGame() {
           />
 
           <Timer 
-            duration={7}
+            duration={10}
             onTimeout={handleTimeout}
             isPaused={timerPaused}
             reset={timerReset}

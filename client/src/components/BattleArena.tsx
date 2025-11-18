@@ -38,11 +38,13 @@ export default function BattleArena({
         </div>
 
         <div className="flex flex-col items-center gap-4">
-          <CharacterSprite
-            type="player"
-            animationState={playerAnimation}
-            imageSrc={playerImage}
-          />
+          <div className="scale-x-[-1]">
+            <CharacterSprite
+              type="player"
+              animationState={playerAnimation}
+              imageSrc={playerImage}
+            />
+          </div>
           <LifeBar
             characterName="Hero"
             currentLife={playerLife}
