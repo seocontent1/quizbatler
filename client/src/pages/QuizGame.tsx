@@ -88,9 +88,9 @@ export default function QuizGame() {
   const [gameState, setGameState] = useState<"start" | "playing" | "gameover">("start");
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [playerLives, setPlayerLives] = useState(3);
-  const [opponentLives, setOpponentLives] = useState(3);
-  const [maxLives, setMaxLives] = useState(3);
+  const [playerLife, setPlayerLife] = useState(100);
+  const [opponentLife, setOpponentLife] = useState(100);
+  const [maxLife] = useState(100);
   const [score, setScore] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -101,16 +101,15 @@ export default function QuizGame() {
   const [questionVisible, setQuestionVisible] = useState(true);
   const [timerReset, setTimerReset] = useState(false);
   const [timerPaused, setTimerPaused] = useState(false);
+  const [questionStartTime, setQuestionStartTime] = useState(0);
 
   const currentQuestion = MOCK_QUESTIONS[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / MOCK_QUESTIONS.length) * 100;
 
   const handleStart = (selectedDifficulty: "easy" | "medium" | "hard") => {
     setDifficulty(selectedDifficulty);
-    const lives = selectedDifficulty === "easy" ? 5 : 3;
-    setMaxLives(lives);
-    setPlayerLives(lives);
-    setOpponentLives(lives);
+    setPlayerLife(100);
+    setOpponentLife(100);
     setGameState("playing");
     resetGame();
   };
@@ -125,6 +124,7 @@ export default function QuizGame() {
     setPlayerAnimation("idle");
     setOpponentAnimation("idle");
     setQuestionVisible(true);
+    setQuestionStartTime(Date.now());
   };
 
   const handleAnswer = (answerIndex: number) => {
@@ -133,19 +133,35 @@ export default function QuizGame() {
     setTimerPaused(true);
     setSelectedAnswer(answerIndex);
     const isCorrect = answerIndex === currentQuestion.correctAnswer;
+    
+    const timeTaken = (Date.now() - questionStartTime) / 1000;
 
     if (isCorrect) {
       setAnswerState("correct");
       setCorrectAnswers((prev) => prev + 1);
       setCurrentStreak((prev) => prev + 1);
-      const points = 100 + currentStreak * 10;
+      
+      let damage = 10;
+      if (timeTaken <= 1) {
+        damage = 2;
+      } else if (timeTaken <= 2) {
+        damage = 3;
+      } else if (timeTaken <= 3) {
+        damage = 4;
+      } else if (timeTaken <= 4) {
+        damage = 6;
+      } else {
+        damage = 10;
+      }
+      
+      const points = 100 + currentStreak * 10 + Math.floor((7 - timeTaken) * 10);
       setScore((prev) => prev + points);
 
       setQuestionVisible(false);
       setTimeout(() => setPlayerAnimation("attack"), 200);
       setTimeout(() => setOpponentAnimation("hit"), 600);
       setTimeout(() => {
-        setOpponentLives((prev) => Math.max(0, prev - 1));
+        setOpponentLife((prev) => Math.max(0, prev - damage));
         setPlayerAnimation("idle");
         setOpponentAnimation("idle");
       }, 1000);
@@ -156,7 +172,7 @@ export default function QuizGame() {
       setTimeout(() => setOpponentAnimation("attack"), 200);
       setTimeout(() => setPlayerAnimation("hit"), 400);
       setTimeout(() => {
-        setPlayerLives((prev) => Math.max(0, prev - 1));
+        setPlayerLife((prev) => Math.max(0, prev - 10));
         setPlayerAnimation("idle");
         setOpponentAnimation("idle");
       }, 800);
@@ -170,6 +186,7 @@ export default function QuizGame() {
         setQuestionVisible(true);
         setTimerReset(!timerReset);
         setTimerPaused(false);
+        setQuestionStartTime(Date.now());
       } else {
         setTimeout(() => {
           setGameState("gameover");
@@ -187,7 +204,7 @@ export default function QuizGame() {
     setTimeout(() => setOpponentAnimation("attack"), 200);
     setTimeout(() => setPlayerAnimation("hit"), 400);
     setTimeout(() => {
-      setPlayerLives((prev) => Math.max(0, prev - 1));
+      setPlayerLife((prev) => Math.max(0, prev - 10));
       setPlayerAnimation("idle");
       setOpponentAnimation("idle");
     }, 800);
@@ -200,6 +217,7 @@ export default function QuizGame() {
         setQuestionVisible(true);
         setTimerReset(!timerReset);
         setTimerPaused(false);
+        setQuestionStartTime(Date.now());
       } else {
         setTimeout(() => {
           setGameState("gameover");
@@ -209,25 +227,27 @@ export default function QuizGame() {
   };
 
   useEffect(() => {
-    if (playerLives === 0) {
+    if (playerLife <= 0) {
+      setTimerPaused(true);
       setTimeout(() => setGameState("gameover"), 1000);
-    } else if (opponentLives === 0) {
+    } else if (opponentLife <= 0) {
+      setTimerPaused(true);
       setPlayerAnimation("victory");
       setTimeout(() => setGameState("gameover"), 1500);
     }
-  }, [playerLives, opponentLives]);
+  }, [playerLife, opponentLife]);
 
   const handleRestart = () => {
     setGameState("start");
-    const lives = difficulty === "easy" ? 5 : 3;
-    setMaxLives(lives);
-    setPlayerLives(lives);
-    setOpponentLives(lives);
+    setPlayerLife(100);
+    setOpponentLife(100);
     resetGame();
   };
 
   const handleClose = () => {
     setGameState("start");
+    setPlayerLife(100);
+    setOpponentLife(100);
   };
 
   if (gameState === "start") {
@@ -240,9 +260,9 @@ export default function QuizGame() {
         <Progress value={progress} className="mb-8 h-2" data-testid="progress-quiz" />
 
         <BattleArena
-          playerLives={playerLives}
-          opponentLives={opponentLives}
-          maxLives={maxLives}
+          playerLife={playerLife}
+          opponentLife={opponentLife}
+          maxLife={maxLife}
           playerAnimation={playerAnimation}
           opponentAnimation={opponentAnimation}
         />
@@ -293,7 +313,7 @@ export default function QuizGame() {
 
       <GameOverModal
         isOpen={gameState === "gameover"}
-        isVictory={opponentLives === 0}
+        isVictory={opponentLife <= 0}
         finalScore={score}
         correctAnswers={correctAnswers}
         totalQuestions={MOCK_QUESTIONS.length}
