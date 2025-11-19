@@ -12,15 +12,18 @@ export default function StartScreen({ onStart }: StartScreenProps) {
       <div className="max-w-2xl w-full space-y-8">
         <div className="text-center space-y-4">
           <h1 className="text-5xl font-bold tracking-tight" data-testid="text-title">
-            Quiz Battle Arena
+            Quiz Jesus Battle
           </h1>
+          <h4 className="text-xl text-muted-foreground" data-testid="text-subtitle">
+            Vamos ajudar Jesus a derrotar Satanas!
+          </h4>
           <p className="text-xl text-muted-foreground" data-testid="text-subtitle">
-            Test your knowledge and defeat your opponent!
+            Não use ferramentas online para responder. Use a Bíblia! Leia a Bíblia!
           </p>
         </div>
 
         <Card className="p-8">
-          <h2 className="text-2xl font-semibold mb-6 text-center">Select Difficulty</h2>
+          <h2 className="text-2xl font-semibold mb-6 text-center">Selecione a dificuldade</h2>
           <div className="grid gap-4">
             <Button
               onClick={() => onStart("easy")}
@@ -31,8 +34,8 @@ export default function StartScreen({ onStart }: StartScreenProps) {
             >
               <Swords className="w-6 h-6 text-primary" />
               <div className="flex-1 text-left">
-                <div className="font-semibold">Easy</div>
-                <div className="text-sm text-muted-foreground">5 lives, basic questions</div>
+                <div className="font-semibold">Fácil</div>
+                <div className="text-sm text-muted-foreground">Parece fácil!</div>
               </div>
             </Button>
 
@@ -45,8 +48,8 @@ export default function StartScreen({ onStart }: StartScreenProps) {
             >
               <Zap className="w-6 h-6 text-primary" />
               <div className="flex-1 text-left">
-                <div className="font-semibold">Medium</div>
-                <div className="text-sm text-muted-foreground">3 lives, moderate challenge</div>
+                <div className="font-semibold">Médio</div>
+                <div className="text-sm text-muted-foreground">Hum...Será que você é capaz?</div>
               </div>
             </Button>
 
@@ -59,20 +62,22 @@ export default function StartScreen({ onStart }: StartScreenProps) {
             >
               <Flame className="w-6 h-6 text-destructive" />
               <div className="flex-1 text-left">
-                <div className="font-semibold">Hard</div>
-                <div className="text-sm text-muted-foreground">3 lives, expert questions</div>
+                <div className="font-semibold">Díficil</div>
+                <div className="text-sm text-muted-foreground">Mostre que você ler a Bíblia!</div>
               </div>
             </Button>
           </div>
         </Card>
 
         <Card className="p-6 bg-muted/50">
-          <h3 className="font-semibold mb-3">How to Play</h3>
+          <h3 className="font-semibold mb-3">Como Jogar</h3>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>• Answer questions correctly to attack your opponent</li>
-            <li>• Wrong answers let your opponent attack you</li>
-            <li>• Defeat your opponent by depleting all their lives</li>
-            <li>• Build streaks for bonus points</li>
+            <li>• O tempo também é seu inimigo. Seja rápido ou perderemos!</li>
+            <li>• Se você é leitor fiel da Bíblia ajudará Jesus nessa luta!</li>
+            <li>• Responda às perguntas corretamente para acabar com satanas!</li>
+            <li>• Não erre, ou satanas poderá vencer a batalha!</li>
+            <li>• Quanto mais rápido você responder mais vida você tira dele!</li>
+            <li>• Vamos salvar o mundo dos laços de Satanas!</li>
           </ul>
         </Card>
       </div>

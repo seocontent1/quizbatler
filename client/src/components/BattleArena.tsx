@@ -20,7 +20,7 @@ export default function BattleArena({
 }: BattleArenaProps) {
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-center items-center gap-4">
         <div className="flex flex-col items-center gap-4">
           <div className="scale-x-[-1]">
             <CharacterSprite
@@ -46,7 +46,7 @@ export default function BattleArena({
             />
           </div>
           <LifeBar
-            characterName="Hero"
+            characterName="Jesus"
             currentLife={playerLife}
             maxLife={maxLife}
             type="player"

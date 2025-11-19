@@ -20,7 +20,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 var vite_config_default = defineConfig({
-  base: "/quizbatler/",
+  base: "/",
   // adicione isso
   plugins: [
     react(),
@@ -169,9 +169,8 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen({
     port,
-    host: "0.0.0.0",
-    reusePort: true
+    host: "localhost"
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on http://localhost:${port}`);
   });
 })();

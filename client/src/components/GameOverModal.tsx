@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trophy, RotateCcw } from "lucide-react";
+import vicImage from "@assets/generated_images/vic.png";
+import defeatImage from "@assets/generated_images/defeat.png";
 
 interface GameOverModalProps {
   isOpen: boolean;
@@ -33,45 +35,57 @@ export default function GameOverModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md" data-testid="modal-gameover">
         <DialogHeader>
-          <div className="flex justify-center mb-4">
+          <div className="w-[120px] h-[120px] rounded-full overflow-hidden mx-auto">
             {isVictory ? (
-              <Trophy className="w-20 h-20 text-primary" data-testid="icon-victory" />
+              <img
+                    src={vicImage}
+                    alt="Victory"
+                    className="w-full h-full object-cover"
+                    data-testid="icon-victory"
+                  />
             ) : (
-              <RotateCcw className="w-20 h-20 text-muted-foreground" data-testid="icon-defeat" />
+              <div className="w-[120px] h-[120px] rounded-full overflow-hidden mx-auto">
+                    <img
+                      src={defeatImage}
+                      alt="Defeat"
+                      className="w-full h-full object-cover"
+                      data-testid="icon-defeat"
+                    />
+                  </div>
             )}
           </div>
           <DialogTitle className="text-3xl text-center" data-testid="text-result">
-            {isVictory ? "Victory!" : "Game Over"}
+            {isVictory ? "Vitoria! Glória a Deus!" : "Game Over"}
           </DialogTitle>
           <DialogDescription className="text-center text-base">
             {isVictory
-              ? "You defeated your opponent!"
-              : "Your opponent was too strong this time."}
+              ? "Estamos salvo! Você derrotou Satanas!"
+              : "Oh não, você deixou Satanas vencer!"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
           <div className="flex justify-between items-center p-4 bg-muted rounded-md">
-            <span className="font-semibold">Final Score</span>
+            <span className="font-semibold">Pontuação</span>
             <span className="text-2xl font-bold font-mono" data-testid="text-final-score">{finalScore}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col items-center p-3 bg-card rounded-md border border-card-border">
-              <span className="text-sm text-muted-foreground">Correct</span>
+              <span className="text-sm text-muted-foreground">Corretas</span>
               <span className="text-xl font-bold font-mono" data-testid="text-correct-answers">
                 {correctAnswers}/{totalQuestions}
               </span>
             </div>
             <div className="flex flex-col items-center p-3 bg-card rounded-md border border-card-border">
-              <span className="text-sm text-muted-foreground">Accuracy</span>
+              <span className="text-sm text-muted-foreground">Precisão</span>
               <span className="text-xl font-bold font-mono" data-testid="text-accuracy">{accuracy}%</span>
             </div>
           </div>
 
           <Button onClick={onRestart} size="lg" className="w-full" data-testid="button-restart">
             <RotateCcw className="w-5 h-5 mr-2" />
-            Play Again
+            Jogar Novamente
           </Button>
         </div>
       </DialogContent>
