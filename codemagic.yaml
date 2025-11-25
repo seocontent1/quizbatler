@@ -1,8 +1,7 @@
 workflows:
   android-capacitor:
     name: Android Release Build
-    machine:
-      os: linux
+    instance_type: linux
     environment:
       java: 17
       node: 20
