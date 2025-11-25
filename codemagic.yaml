@@ -24,3 +24,9 @@ workflows:
 
     artifacts:
       - android/app/build/outputs/**/*.apk
+gradle:
+  arguments: "--no-daemon --stacktrace --info"
+instance_type: mac_mini_m2
+env:
+  ANDROID_SDK_VERSION: 35
+
