@@ -3,7 +3,6 @@ workflows:
     name: Build Android APK
     max_build_duration: 60
     environment:
-      flutter: stable
       vars:
         PACKAGE_NAME: "com.jesusquizbatler33.app"
     scripts:
@@ -11,12 +10,16 @@ workflows:
         script: |
           npm install
           npx cap sync android
+
       - name: Build Web App
         script: |
           npm run build
+
       - name: Build Android
         script: |
           cd android
+          chmod +x gradlew
           ./gradlew assembleRelease
+
     artifacts:
       - android/app/build/outputs/**/*.apk
