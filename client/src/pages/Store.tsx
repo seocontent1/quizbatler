@@ -5,12 +5,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Zap, ShoppingBag, Package } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import store from "cordova-plugin-purchase";
+import { buyProduct } from "@/services/revenuecat";
 export { store };
 
-function buyBooster(id: string) {
-  console.log("🛒 Comprando:", id);
-  store.order(id);
+import { buyProduct } from "@/services/revenuecat";
+
+async function buyBooster(productId: string) {
+  console.log("🛒 Comprando:", productId);
+  await buyProduct(productId);
 }
 
 export default function Store() {
