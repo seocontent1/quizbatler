@@ -6,14 +6,15 @@ workflows:
       java: 17
     scripts:
       - name: Install dependencies
-        script: |
-          npm install
+        script: npm install
       - name: Build web app
-        script: |
-          npm run build
+        script: npm run build
       - name: Sync Capacitor
+        script: npx cap sync android
+      - name: Fix gradlew permissions
         script: |
-          npx cap sync android
+          cd android
+          chmod +x gradlew
       - name: Build Android
         script: |
           cd android
