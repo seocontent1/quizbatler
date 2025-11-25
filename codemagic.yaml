@@ -1,39 +1,23 @@
 workflows:
   android-capacitor:
     name: Android Release Build
-    max_build_duration: 60
     environment:
-      vars:
-        NODE_VERSION: "20.11.1"
-        JAVA_VERSION: "17"
-        ANDROID_COMPILE_SDK: "35"
-        ANDROID_BUILD_TOOLS: "35.0.0"
-        GRADLE_OPTS: "-Xmx4096m"
-      node: $NODE_VERSION
-      java: $JAVA_VERSION
-    cache:
-      cache_paths:
-        - ~/.gradle/caches
-        - ~/.gradle/wrapper
-        - ~/.npm
+      node: 20
+      java: 17
     scripts:
-      - name: Install Node dependencies
+      - name: Install dependencies
         script: |
           npm install
-      - name: Build Web App
+      - name: Build web app
         script: |
           npm run build
       - name: Sync Capacitor
         script: |
           npx cap sync android
-      - name: Ensure Android SDK components
-        script: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-$ANDROID_COMPILE_SDK" "build-tools;$ANDROID_BUILD_TOOLS"
-      - name: Build Android release
+      - name: Build Android
         script: |
           cd android
-          ./gradlew assembleRelease --stacktrace --no-daemon
+          ./gradlew assembleRelease --stacktrace
     artifacts:
       - android/app/build/outputs/**/*.apk
       - android/app/build/outputs/**/*.aab
