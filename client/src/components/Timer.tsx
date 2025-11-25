@@ -1,51 +1,93 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TimerProps {
   duration: number;
+  extraTimeEvent?: number;
+  extraTimeAmount?: number;
   onTimeout: () => void;
   isPaused: boolean;
   reset: boolean;
 }
 
-export default function Timer({ duration, onTimeout, isPaused, reset }: TimerProps) {
+export default function Timer({
+  duration,
+  extraTimeEvent,
+  extraTimeAmount = 0,
+  onTimeout,
+  isPaused,
+  reset,
+}: TimerProps) {
   const [timeLeft, setTimeLeft] = useState(duration);
+  const [maxTime, setMaxTime] = useState(duration);
 
+  // ✅ controla o tempo real
+  const endTimeRef = useRef<number>(Date.now() + duration * 1000);
+
+  // ✅ reinicia quando reset ou duration mudarem
   useEffect(() => {
+    const newEnd = Date.now() + duration * 1000;
+    endTimeRef.current = newEnd;
+
     setTimeLeft(duration);
+    setMaxTime(duration);
   }, [reset, duration]);
 
+  // ✅ adicionar tempo extra de forma precisa
+  useEffect(() => {
+    if (!extraTimeAmount) return;
+
+    endTimeRef.current += extraTimeAmount * 1000;
+    setMaxTime((prev) => prev + extraTimeAmount);
+  }, [extraTimeEvent]);
+
+  // ✅ loop baseado no relógio real
   useEffect(() => {
     if (isPaused) return;
 
-    if (timeLeft <= 0) {
-      onTimeout();
-      return;
-    }
+    let animationId: number;
 
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 0.1));
-    }, 100);
+    const tick = () => {
+      const remaining = (endTimeRef.current - Date.now()) / 1000;
 
-    return () => clearInterval(interval);
-  }, [timeLeft, isPaused, onTimeout]);
+      if (remaining <= 0) {
+        setTimeLeft(0);
+        onTimeout(); // ✅ dispara só uma vez
+        return;
+      }
 
-  const percentage = (timeLeft / duration) * 100;
+      setTimeLeft(remaining);
+      animationId = requestAnimationFrame(tick);
+    };
+
+    animationId = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(animationId);
+  }, [isPaused, onTimeout]);
+
+  const percentage = (timeLeft / maxTime) * 100;
   const isLowTime = timeLeft <= 3;
 
   return (
     <div className="flex items-center gap-3">
-      <Clock className={cn("w-5 h-5", isLowTime && "text-destructive animate-pulse")} />
+      <Clock
+        className={cn(
+          "w-5 h-5",
+          isLowTime && "text-destructive animate-pulse"
+        )}
+      />
+
       <div className="flex-1">
-        <Progress 
-          value={percentage} 
+        <Progress
+          value={percentage}
           className={cn("h-3", isLowTime && "bg-destructive/20")}
           data-testid="progress-timer"
         />
       </div>
-      <span 
+
+      <span
         className={cn(
           "font-mono font-bold text-lg min-w-[3ch]",
           isLowTime && "text-destructive animate-pulse"

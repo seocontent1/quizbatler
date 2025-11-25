@@ -12,13 +12,13 @@ export default function QuestionCard({ question, roundNumber, totalRounds, isVis
   return (
     <Card
       className={cn(
-        "p-8 max-w-2xl mx-auto transition-all duration-300",
+        "mt-8 p-4 max-w-2xl mx-auto transition-all duration-300",
         isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
       )}
       data-testid="card-question"
     >
-      <div className="flex justify-between items-start gap-4 mb-6">
-        <h2 className="text-2xl font-semibold leading-relaxed flex-1" data-testid="text-question">
+      <div className="flex justify-between items-start gap-4">
+        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-center" data-testid="text-question">
           {question}
         </h2>
         <Badge variant="secondary" className="shrink-0" data-testid="badge-round">

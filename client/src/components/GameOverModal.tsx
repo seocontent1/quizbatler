@@ -7,8 +7,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trophy, RotateCcw } from "lucide-react";
-import vicImage from "@assets/generated_images/vic.png";
-import defeatImage from "@assets/generated_images/defeat.png";
+import vicImage from "/salvo.jpg";
+import defeatImage from "/fogo.jpg";
 
 interface GameOverModalProps {
   isOpen: boolean;
@@ -33,21 +33,21 @@ export default function GameOverModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md" data-testid="modal-gameover">
+      <DialogContent className="max-w-xs !p-3" data-testid="modal-gameover">
         <DialogHeader>
-          <div className="w-[120px] h-[120px] rounded-full overflow-hidden mx-auto">
+          <div className="overflow-hidden mx-auto">
             {isVictory ? (
               <img
                     src={vicImage}
-                    alt="Victory"
+                    alt="Vitoria em Cristo!"
                     className="w-full h-full object-cover"
                     data-testid="icon-victory"
                   />
             ) : (
-              <div className="w-[120px] h-[120px] rounded-full overflow-hidden mx-auto">
+              <div className="overflow-hidden mx-auto">
                     <img
                       src={defeatImage}
-                      alt="Defeat"
+                      alt="Derrota!"
                       className="w-full h-full object-cover"
                       data-testid="icon-defeat"
                     />
@@ -60,7 +60,7 @@ export default function GameOverModal({
           <DialogDescription className="text-center text-base">
             {isVictory
               ? "Estamos salvo! Você derrotou Satanas!"
-              : "Oh não, você deixou Satanas vencer!"}
+              : "Satanas venceu! Você precisa estudar mais a Bíblia?"}
           </DialogDescription>
         </DialogHeader>
 

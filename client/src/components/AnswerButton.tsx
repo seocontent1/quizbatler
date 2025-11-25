@@ -24,16 +24,18 @@ export default function AnswerButton({ text, onClick, state, disabled, index }: 
       disabled={disabled}
       variant={state === "default" || state === "selected" ? "outline" : "default"}
       className={cn(
-        "min-h-16 text-lg font-medium justify-start relative overflow-hidden",
+          "text-base sm:text-lg font-medium justify-start relative overflow-hidden",
+          "py-2 sm:py-4",
+          "min-h-12 sm:min-h-16",
         stateStyles[state]
       )}
       data-testid={`button-answer-${index}`}
     >
-      <span className="flex items-center gap-3 w-full">
+      <span className="flex items-center gap-2 w-full">
         <span className="text-muted-foreground font-semibold">{String.fromCharCode(65 + index)}.</span>
         <span className="flex-1 text-left">{text}</span>
-        {state === "correct" && <Check className="w-5 h-5" />}
-        {state === "incorrect" && <X className="w-5 h-5" />}
+        {state === "correct" && <Check className="w-5 h-2" />}
+        {state === "incorrect" && <X className="w-5 h-2" />}
       </span>
     </Button>
   );

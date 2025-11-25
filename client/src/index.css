@@ -58,6 +58,16 @@
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
+  @keyframes impactBurst {
+    0%   { transform: scale(0.4); opacity: 1; }
+    70%  { transform: scale(1);   opacity: 0.8; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  .animate-impact {
+    animation: impactBurst 350ms ease-out forwards;
+  }
+
 /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -203,10 +213,17 @@
   }
 
   @keyframes attack {
-    0% { transform: translateX(0) scale(1); }
-    50% { transform: translateX(40px) scale(1.1); }
-    100% { transform: translateX(0) scale(1); }
+    0% {
+      transform: var(--sprite-transform) translateX(0) scale(1);
+    }
+    50% {
+      transform: var(--sprite-transform) translateX(40px) scale(1.1);
+    }
+    100% {
+      transform: var(--sprite-transform) translateX(0) scale(1);
+    }
   }
+
 
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -230,15 +247,11 @@
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
-
   /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
    * buttons/badges can remove the automatic brightness adjustment on interactions
    * and program their own. */
   .no-default-hover-elevate {}
-
   .no-default-active-elevate {}
-
-
   /**
    * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
    * This way they can stack/compound. Both will overlap the parent's borders!
@@ -288,17 +301,6 @@
     z-index: 999;
     /* sits in front of content */
   }
-
-  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-1);
-  }
-
-  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:active:not(.no-default-active-elevate)::after {
-    background-color: var(--elevate-2);
-  }
-
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
@@ -308,3 +310,5 @@
     inset: -1px;
   }
 }
+
+

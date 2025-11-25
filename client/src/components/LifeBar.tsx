@@ -8,27 +8,37 @@ interface LifeBarProps {
   type: "player" | "opponent";
 }
 
-export default function LifeBar({ characterName, currentLife, maxLife, type }: LifeBarProps) {
+export default function LifeBar({ characterName, currentLife, maxLife }: LifeBarProps) {
   const percentage = (currentLife / maxLife) * 100;
   const isLow = percentage <= 30;
-  
+
   return (
-    <div className={cn("flex flex-col gap-2 w-48", type === "opponent" ? "items-center" : "items-center")} data-testid={`lifebar-${type}`}>
-      <div className="flex items-center gap-2 w-full justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide" data-testid={`text-${type}-name`}>
+    <div
+      className="flex flex-col gap-1 w-full max-w-[150px] sm:max-w-[200px] min-w-0"
+      data-testid={`lifebar`}
+    >
+      {/* HEADER */}
+      <div className="flex items-center justify-between text-xs font-semibold min-w-0">
+
+        {/* NOME — precisa truncar para não empurrar a vida */}
+        <span className="uppercase tracking-wide truncate min-w-0">
           {characterName}
         </span>
-        <span className="text-xs font-mono text-muted-foreground" data-testid={`text-${type}-life`}>
+
+        {/* VIDA — não deve crescer demais */}
+        <span className="text-xs font-mono text-muted-foreground ml-2 shrink-0">
           {currentLife}/{maxLife}
         </span>
       </div>
-      <Progress 
-        value={percentage} 
+
+      {/* PROGRESS BAR */}
+      <Progress
+        value={percentage}
         className={cn(
-          "h-3 w-full",
+          "h-3 w-full overflow-hidden",
           isLow && "[&>div]:bg-destructive"
         )}
-        data-testid={`progress-${type}-life`}
+        data-testid={`progress-life`}
       />
     </div>
   );

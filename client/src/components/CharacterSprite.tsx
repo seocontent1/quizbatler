@@ -9,7 +9,7 @@ interface CharacterSpriteProps {
 export default function CharacterSprite({ type, animationState, imageSrc }: CharacterSpriteProps) {
   const animationClasses = {
     idle: "animate-[breathe_3s_ease-in-out_infinite]",
-    attack: "animate-[attack_0.4s_ease-out]",
+    attack: "animate-[attack_0.4s_ease-out_forwards]",
     hit: "animate-[shake_0.3s_ease-in-out]",
     victory: "animate-[bounce_0.8s_ease-in-out]",
   };
@@ -17,14 +17,13 @@ export default function CharacterSprite({ type, animationState, imageSrc }: Char
   return (
     <div
       className={cn(
-        "w-48 h-48 flex items-center justify-center transition-transform duration-300",
-        animationClasses[animationState]
+        "sm:w-36 sm:h-36 md:w-48 md:h-48 flex items-center justify-center transition-transform duration-300",
+        animationClasses[animationState],
       )}
-      data-testid={`sprite-${type}`}
     >
       <img
+        key={imageSrc}  // força recriar a imagem
         src={imageSrc}
-        alt={`${type} character`}
         className="w-full h-full object-contain drop-shadow-lg"
       />
     </div>
