@@ -1,3 +1,22 @@
-git add codemagic.yaml
-git commit -m "Add Codemagic config"
-git push origin main
+workflows:
+  android-release:
+    name: Build Android APK
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      vars:
+        PACKAGE_NAME: "com.jesusquizbatler33.app"
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+          npx cap sync android
+      - name: Build Web App
+        script: |
+          npm run build
+      - name: Build Android
+        script: |
+          cd android
+          ./gradlew assembleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.apk
