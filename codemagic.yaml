@@ -1,9 +1,11 @@
 workflows:
   android-capacitor:
     name: Android Release Build
+    machine:
+      os: linux
     environment:
-      node: 20
       java: 17
+      node: 20
     scripts:
       - name: Install dependencies
         script: npm install
@@ -12,9 +14,7 @@ workflows:
       - name: Sync Capacitor
         script: npx cap sync android
       - name: Fix gradlew permissions
-        script: |
-          cd android
-          chmod +x gradlew
+        script: chmod +x android/gradlew
       - name: Build Android
         script: |
           cd android
