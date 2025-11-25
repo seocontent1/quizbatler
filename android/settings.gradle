@@ -1,7 +1,3 @@
-include ':app'
-
-apply from: 'capacitor.settings.gradle'
-
 pluginManagement {
     repositories {
         google()
@@ -18,3 +14,7 @@ dependencyResolutionManagement {
         maven { url 'https://jitpack.io' }
     }
 }
+
+include ':app'
+
+apply from: 'capacitor.settings.gradle'
