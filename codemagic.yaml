@@ -1,7 +1,8 @@
 workflows:
   android-capacitor:
     name: Android Release Build
-    instance_type: linux
+    quizbatler:
+    instance_type: linux_x1
     environment:
       java: 17
       node: 20
