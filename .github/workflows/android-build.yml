@@ -36,6 +36,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Enable Gradle daemon & JVM config
+        run: |
+          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> android/gradle.properties
+          echo "android.nonTransitiveRClass=true" >> android/gradle.properties
+
       - name: Build APK
         run: |
           cd android

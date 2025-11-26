@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.jesusquiz.battle33"
-    compileSdk rootProject.ext.compileSdkVersion
+    compileSdkVersion 35
 
     defaultConfig {
         applicationId "com.jesusquiz.battle33"
@@ -10,6 +10,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        minSdkVersion 23
+        targetSdkVersion 35
     }
 
     buildTypes {
