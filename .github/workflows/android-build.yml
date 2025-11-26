@@ -30,11 +30,11 @@ jobs:
       - name: Ensure gradlew is executable
         run: chmod +x android/gradlew
 
-      - name: Install JDK 17
+      - name: Install JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Enable Gradle daemon & JVM config
         run: |
