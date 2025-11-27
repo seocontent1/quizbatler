@@ -33,14 +33,14 @@ export default function GameOverModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xs !p-3" data-testid="modal-gameover">
+      <DialogContent className="max-w-[22rem] !p-3 rounded-lg" data-testid="modal-gameover">
         <DialogHeader>
           <div className="overflow-hidden mx-auto">
             {isVictory ? (
               <img
                     src={vicImage}
                     alt="Vitoria em Cristo!"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded-lg"
                     data-testid="icon-victory"
                   />
             ) : (

@@ -1,11 +1,21 @@
 import { supabase } from "@/lib/supabase";
+import { Capacitor } from "@capacitor/core";
 
 export async function loginWithGoogle() {
+  const isMobile = Capacitor.isNativePlatform();
+
+  const redirectTo = isMobile
+    ? "com.jesusquiz.battle33://auth/callback"
+    : window.location.origin; // web → ex: https://meusite.com
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
+    options: {
+      redirectTo,
+      flow: "pkce",
+    },
   });
 
-  // Se logar → desativa modo convidado
   if (!error) {
     localStorage.removeItem("guestMode");
   }
@@ -15,8 +25,5 @@ export async function loginWithGoogle() {
 
 export async function logout() {
   await supabase.auth.signOut();
-
-  // Sair também encerra modo convidado
   localStorage.removeItem("guestMode");
 }
-

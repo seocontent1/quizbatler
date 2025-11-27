@@ -1,7 +1,11 @@
 import CharacterSprite from "./CharacterSprite";
 import LifeBar from "./LifeBar";
+import AttackEffect from "@/components/AttackEffect";
+import { useRef, useState, useCallback } from "react";
 
 interface BattleArenaProps {
+  showHolyBlast: boolean;
+  setShowHolyBlast: (value: boolean) => void;
   playerLife: number;
   opponentLife: number;
   maxLife: number;
@@ -10,6 +14,7 @@ interface BattleArenaProps {
   playerImage: string;
   opponentImage: string;
   impactParticles: number;
+  setImpactParticles: React.Dispatch<React.SetStateAction<number>>;
   playerImgKey: number;
 }
 
@@ -22,88 +27,138 @@ export default function BattleArena({
   playerAnimation,
   opponentAnimation,
   impactParticles,
+  setImpactParticles,
   playerImgKey,
+  showHolyBlast,
+  setShowHolyBlast,
 }: BattleArenaProps) {
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 480;
-    const particleSize = isMobile ? 20 : 40;       // tamanho da imagem
-    const spread = isMobile ? 100 : 150;            // raio de espalhamento
 
-    // 📌 Criação das partículas (agora responsivas)
-    const particleElements = Array.from({ length: impactParticles * 50 }).map((_, i) => (
-      <div
-        key={i}
-        className="
-          absolute
-          animate-impact
-          pointer-events-none
-        "
-        style={{
-          width: `${particleSize}px`,
-          height: `${particleSize}px`,
-          top: isMobile ? "40%" : "50%",
-          left: "50%",
-          transform: `translate(-50%, -50%) translate(${(Math.random() - 0.5) * spread}px, ${(Math.random() - 0.5) * spread}px)`,
-          zIndex: 9999,
-        }}
-      >
-        <img
-          src="/character_sprites/efect.png"
-          className="w-full h-full"
-        />
-      </div>
-    ));
+  // === REFS ===
+  const arenaRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<HTMLDivElement | null>(null);
+  const enemyRef = useRef<HTMLDivElement | null>(null);
+
+  // Dados do poder (posição medida)
+  const [holyBlastData, setHolyBlastData] = useState<null | {
+    startX: number;
+    startY: number;
+    distX: number;
+  }>(null);
+
+  const triggerHolyBlast = useCallback(() => {
+    if (!arenaRef.current || !playerRef.current || !enemyRef.current) {
+      console.warn("missing refs", { arena: !!arenaRef.current, player: !!playerRef.current, enemy: !!enemyRef.current });
+      return;
+    }
+
+    const arenaRect = arenaRef.current.getBoundingClientRect();
+    const pRect = playerRef.current.getBoundingClientRect();
+    const eRect = enemyRef.current.getBoundingClientRect();
+
+    // AJUSTE: Ponto de saída do poder (mão direita do personagem)
+    // Aumenta o offset X para sair da FRENTE (direita) do personagem
+    const startX = pRect.left - arenaRect.left + pRect.width * 0.35; // 0.75 = lado direito
+    const startY = pRect.top - arenaRect.top + pRect.height * 0.30;  // altura da mão
+
+    const endX = eRect.left - arenaRect.left + eRect.width * 0.5;
+    const deltaX = endX - startX;
+
+    setHolyBlastData({ startX, startY, distX: deltaX });
+  }, [arenaRef, playerRef, enemyRef]);
+
+  // Quando o QuizGame solicitar o HolyBlast
+  if (showHolyBlast && !holyBlastData) {
+    triggerHolyBlast();
+  }
+
+  // === Impact Particles ===
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 480;
+  const particleSize = 40;
+  const spread = 100;
+
+  const particleElements = Array.from({ length: impactParticles * 35 }).map((_, i) => (
+    <div
+      key={i}
+      className="absolute animate-impact pointer-events-none"
+      style={{
+        width: `${particleSize}px`,
+        height: `${particleSize}px`,
+        top: isMobile ? "40%" : "50%",
+        left: "50%",
+        transform: `translate(-50%, -50%) translate(${(Math.random() - 0.5) * spread}px, ${(Math.random() - 0.5) * spread}px)`,
+        zIndex: 9999,
+      }}
+    >
+      <img src="/character_sprites/efect.png" className="w-full h-full" />
+    </div>
+  ));
 
   return (
-   <div className="relative w-full max-w-md sm:max-w-4xl mx-auto overflow-hidden mt-4 sm:mt-6 mb-4 sm:mb-6">
+    <div ref={arenaRef} data-id="arena-root" className="relative w-full h-full">
 
-     <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:justify-center sm:gap-40 items-start">
+      {/* RENDERIZA O ATAQUE AQUI, FORA DOS PERSONAGENS */}
+      {holyBlastData && (
+        <AttackEffect
+          image="/character_sprites/pow.png"
+          startX={holyBlastData.startX}
+          startY={holyBlastData.startY}
+          distX={holyBlastData.distX}
+          onFinish={() => {
+          setHolyBlastData(null);
+          setShowHolyBlast(false);
+          setImpactParticles(prev => prev + 1);
+          }}
+        />
+      )}
 
-       {/* BLOCO DO OPONENTE */}
-       <div className="flex flex-col items-center gap-2 relative min-w-0 mt-4">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:justify-center sm:gap-40 items-start">
 
-         {/* partículas */}
-         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[9999]">
-           {particleElements}
-         </div>
-         {/* sprite com glow */}
-         <div className="xs:w-28 xs:h-28 sm:w-40 drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]">
-           <CharacterSprite
-             type="opponent"
-             animationState={opponentAnimation}
-             imageSrc={opponentImage}
-           />
-         </div>
-        <div className="w-full max-w-[150px] sm:max-w-[200px] min-w-0">
-         <LifeBar
-           characterName="Dark Lord"
-           currentLife={opponentLife}
-           maxLife={maxLife}
-           type="opponent"
-         />
-         </div>
-       </div>
+        {/* OPONENTE */}
+        <div className="flex flex-col items-center gap-2 relative min-w-0 mt-4">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[9999]">
+            {particleElements}
+          </div>
 
-       {/* BLOCO DO PLAYER */}
-       <div className="flex flex-col items-center gap-2 relative min-w-0 mt-4">
-         <div className="xs:w-28 xs:h-28 sm:w-40 drop-shadow-[0_0_20px_rgba(255,255,0,0.8)]">
-           <CharacterSprite
-             type="player"
-             animationState={playerAnimation}
-             imageSrc={playerImage}
-           />
-         </div>
-        <div className="w-full max-w-[150px] sm:max-w-[200px] min-w-0">
-         <LifeBar
-           characterName="Jesus"
-           currentLife={playerLife}
-           maxLife={maxLife}
-           type="player"
-         />
-         </div>
-       </div>
+          <div className="drop-shadow-[0_0_10px_rgba(255,0,0,0.8)]">
+            <CharacterSprite
+              ref={enemyRef}
+              type="opponent"
+              animationState={opponentAnimation}
+              imageSrc={opponentImage}
+            />
+          </div>
 
-     </div>
-   </div>
+          <div className="w-full max-w-[150px] sm:max-w-[200px] min-w-0">
+            <LifeBar
+              characterName="Dark Lord"
+              currentLife={opponentLife}
+              maxLife={maxLife}
+              type="opponent"
+            />
+          </div>
+        </div>
 
+        {/* PLAYER */}
+        <div className="flex flex-col items-center gap-2 relative min-w-0 mt-4">
+          <div className="drop-shadow-[0_0_10px_rgba(255,255,0,0.8)]">
+            <CharacterSprite
+              ref={playerRef}
+              type="player"
+              animationState={playerAnimation}
+              imageSrc={playerImage}
+            />
+          </div>
+
+          <div className="w-full max-w-[150px] sm:max-w-[200px] min-w-0">
+            <LifeBar
+              characterName="Jesus"
+              currentLife={playerLife}
+              maxLife={maxLife}
+              type="player"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -13,7 +13,7 @@ export default function ScoreDisplay({ correctAnswers, currentStreak, totalScore
       <div
         className="
           flex flex-wrap
-          gap-4 sm:gap-8
+          gap-2 sm:gap-8
           justify-center
           text-center
         "

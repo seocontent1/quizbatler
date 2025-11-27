@@ -133,6 +133,7 @@ export default function QuizGame() {
   const [revealAnswer, setRevealAnswer] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isBlocked = !user || guestMode;
+  const [showHolyBlast, setShowHolyBlast] = useState(false);
 
   const FREEZER_COST = 10;
   const REVEAL_COST = 3;
@@ -452,6 +453,8 @@ export default function QuizGame() {
 
   // -------------------- Resposta do jogador --------------------
 
+  // Trecho corrigido do handleAnswer - substitua a função completa
+
   const handleAnswer = (answerIndex: number) => {
     if (!currentQuestion) return;
     if (selectedAnswer !== null) return;
@@ -469,87 +472,67 @@ export default function QuizGame() {
       setAnswerState("correct");
       setCorrectAnswers(prev => prev + 1);
 
+      // ✅ SEQUÊNCIA CORRIGIDA - Player ataca
       setPlayerAnimation("attack");
       setPlayerImage(PLAYER_ATK);
+      setShowHolyBlast(true);
 
-      // 2) Oponente leva hit 150ms depois
-      setTimeout(() => {
-      setOpponentAnimation("hit");
-      setOpponentImage(OPPONENT_HIT);
-      }, 150);
+      // ✅ Oponente leva hit após 600ms
+      const hitTimeout = window.setTimeout(() => {
+        setOpponentAnimation("hit");
+        setOpponentImage(OPPONENT_HIT);
 
-      // 3) Após 600ms tudo volta ao normal
-      setTimeout(() => {
-      setPlayerAnimation("idle");
-      setPlayerImage(PLAYER_IDLE);
-      setOpponentAnimation("idle");
-      setOpponentImage(ENEMY_IDLE);
+        // Calcula e aplica o dano
+        let damage = 3;
+        if (timeTaken < 3) damage = 10;
+        else if (timeTaken >= 3 && timeTaken < 5) damage = 6;
+        else if (timeTaken >= 5 && timeTaken < 8) damage = 4;
+        else if (timeTaken >= 8 && timeTaken <= 10) damage = 3;
+
+        setOpponentLife(prev => Math.max(0, prev - damage));
       }, 600);
-      setImpactParticles(prev => prev + 1);
+      timeoutsRef.current.push(hitTimeout);
 
-      // 3) Aplica o dano imediatamente (ou sincronize para mais tarde se desejar)
-      let damage = 3;
-      if (timeTaken < 3) damage = 10;
-      else if (timeTaken >= 3 && timeTaken < 5) damage = 6;
-      else if (timeTaken >= 5 && timeTaken < 8) damage = 4;
-      else if (timeTaken >= 8 && timeTaken <= 10) damage = 3;
-
-      setOpponentLife(prev => Math.max(0, prev - damage));
-
-      setScore((prev) => prev + 10);
-
-      setQuestionVisible(false);
-
-      // 4) RECUPERAÇÃO controlada (salva o id em ref e no array global)
-      const recId = window.setTimeout(() => {
+      // ✅ Volta ao idle após 1000ms (dá tempo do hit terminar)
+      const idleTimeout = window.setTimeout(() => {
         setPlayerAnimation("idle");
         setPlayerImage(PLAYER_IDLE);
-
         setOpponentAnimation("idle");
         setOpponentImage(ENEMY_IDLE);
-
         setInputsDisabled(false);
-      }, 550);
+      }, 1000);
+      timeoutsRef.current.push(idleTimeout);
 
-      recoveryTimeoutRef.current = recId;
-      timeoutsRef.current.push(recId);
+      setScore((prev) => prev + 10);
+      setQuestionVisible(false);
 
     } else {
+      // ✅ RESPOSTA INCORRETA - Oponente ataca
       setAnswerState("incorrect");
       setCurrentStreak((prev) => prev + 1);
       setIncorrectAnswers(prev => prev + 1);
+
+      // ✅ Oponente começa a atacar imediatamente
       setOpponentAnimation("attack");
       setOpponentImage(ENEMY_ATK);
 
-      setTimeout(() => {
-        setOpponentAnimation("idle");
-        setOpponentImage(ENEMY_IDLE);
-      }, 600);
-
-      setTimeout(() => {
+      // ✅ Player leva hit após 400ms
+      const playerHitTimeout = window.setTimeout(() => {
         setPlayerAnimation("hit");
       }, 400);
+      timeoutsRef.current.push(playerHitTimeout);
 
-      setTimeout(() => {
+      // ✅ Aplica dano e volta ao idle após 800ms
+      const damageTimeout = window.setTimeout(() => {
         setPlayerLife((prev) => Math.max(0, prev - 10));
         setPlayerAnimation("idle");
         setOpponentAnimation("idle");
+        setOpponentImage(ENEMY_IDLE);
       }, 800);
-
-
-      // comportamento antigo para resposta errada — mantive, mas dentro do sistema de timeouts
-      const t4 = window.setTimeout(() => setOpponentAnimation("attack"), 400);
-      timeoutsRef.current.push(t4);
-      const t5 = window.setTimeout(() => setPlayerAnimation("hit"), 400);
-      timeoutsRef.current.push(t5);
-      const t6 = window.setTimeout(() => {
-        setPlayerAnimation("idle");
-        setOpponentAnimation("idle");
-      }, 800);
-      timeoutsRef.current.push(t6);
+      timeoutsRef.current.push(damageTimeout);
     }
 
-    // --- Avança para próxima pergunta (sempre agendado) ---
+    // ✅ Avança para próxima pergunta (espera as animações terminarem)
     const tAdvance = window.setTimeout(() => {
       setCurrentQuestionIndex((prev) =>
         currentQuestions.length > 0 ? (prev + 1) % currentQuestions.length : prev
@@ -560,24 +543,25 @@ export default function QuizGame() {
       setRevealAnswer(false);
       setUsedReveal(false);
       setUsedBoosts({
-          10: false,
-          20: false,
-          30: false,
-        });
+        10: false,
+        20: false,
+        30: false,
+      });
 
       setAnswerState("default");
       setQuestionVisible(true);
       setTimerReset(prev => !prev);
       requestAnimationFrame(() => {
-      setTimerPaused(false);
+        setTimerPaused(false);
       });
 
       setQuestionStartTime(Date.now());
-      }, 300);
-
+    }, 500); // Aumentei para 1500ms para dar tempo das animações
     timeoutsRef.current.push(tAdvance);
   };
 
+
+  // ✅ TIMEOUT CORRIGIDO TAMBÉM
   const handleTimeout = () => {
     if (!currentQuestion) return;
     setRevealAnswer(false);
@@ -588,23 +572,29 @@ export default function QuizGame() {
     setAnswerState("incorrect");
     setIncorrectAnswers(prev => prev + 1);
 
-    const t7 = window.setTimeout(() => {
-    setOpponentAnimation("attack");
-    setOpponentImage(ENEMY_ATK);
+    // ✅ Oponente ataca após 200ms
+    const attackTimeout = window.setTimeout(() => {
+      setOpponentAnimation("attack");
+      setOpponentImage(ENEMY_ATK);
     }, 200);
+    timeoutsRef.current.push(attackTimeout);
 
-    timeoutsRef.current.push(t7);
-    const t8 = window.setTimeout(() => setPlayerAnimation("hit"), 400);
-    timeoutsRef.current.push(t8);
-    const t9 = window.setTimeout(() => {
+    // ✅ Player leva hit após 400ms
+    const hitTimeout = window.setTimeout(() => {
+      setPlayerAnimation("hit");
+    }, 400);
+    timeoutsRef.current.push(hitTimeout);
+
+    // ✅ Aplica dano e volta ao idle após 800ms
+    const damageTimeout = window.setTimeout(() => {
       setPlayerLife((prev) => Math.max(0, prev - 10));
       setPlayerAnimation("idle");
       setOpponentAnimation("idle");
       setOpponentImage(ENEMY_IDLE);
-
     }, 800);
-    timeoutsRef.current.push(t9);
+    timeoutsRef.current.push(damageTimeout);
 
+    // ✅ Avança para próxima pergunta
     const tAdvance2 = window.setTimeout(() => {
       setCurrentQuestionIndex((prev) =>
         currentQuestions.length > 0 ? (prev + 1) % currentQuestions.length : prev
@@ -617,7 +607,7 @@ export default function QuizGame() {
         setTimerPaused(false);
       });
       setQuestionStartTime(Date.now());
-    }, 1800);
+    }, 1500); // Aumentei de 1800ms para 1500ms
     timeoutsRef.current.push(tAdvance2);
   };
 
@@ -702,6 +692,9 @@ export default function QuizGame() {
             playerImage={playerImage}
             opponentImage={opponentImage}
             impactParticles={impactParticles}
+            setImpactParticles={setImpactParticles}
+            showHolyBlast={showHolyBlast}
+            setShowHolyBlast={setShowHolyBlast}
           />
 
           <div className="mt-1 mb-1">
@@ -845,39 +838,37 @@ export default function QuizGame() {
         onClose={handleClose}
       />
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
-                <DialogContent className="text-center max-w-sm">
-                  <DialogHeader className="text-left">
-                    <DialogTitle>Faça login para continuar</DialogTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Você precisa estar logado para percorrer uma jornada global.
-                    </p>
-                  </DialogHeader>
+    <DialogContent className="text-center max-w-sm">
+      <DialogHeader className="text-left">
+        <DialogTitle>Faça login para continuar</DialogTitle>
+        <p className="text-sm text-muted-foreground">
+          Você precisa estar logado para percorrer uma jornada global.
+        </p>
+      </DialogHeader>
 
-                  <Button
-                    onClick={async () => {
-                      await loginWithGoogle();
-                      setShowLoginModal(false);
-                    }}
-                    className="w-full bg-blue-600 text-md text-white border-none"
-                  >
-                    Entrar com Google
-                  </Button>
-                  <p className="text-md text-muted-foreground">Participa de partidas Rankeadas, Rank global e pode comprar recursos!</p>
-                  <Button
-                    onClick={() => {
-                      localStorage.setItem("guestMode", "true");
-                      setGuestMode(true);
-                      setShowLoginModal(false);
-                    }}
-                    className="w-full bg-[#b3dee2] text-md border-none"
-                  >
-                    Jogar como Convidado
-                  </Button>
-                  <p className="text-md text-muted-foreground">Não participa de partidas Rankeadas, nem Rank global e nem pode comprar recursos!</p>
-                </DialogContent>
-              </Dialog>
-
+      <Button
+        onClick={async () => {
+          await loginWithGoogle();
+          setShowLoginModal(false);
+        }}
+        className="w-full bg-blue-600 text-md text-white border-none"
+      >
+        Entrar com Google
+      </Button>
+      <p className="text-md text-muted-foreground">Participa de partidas Rankeadas, Rank global e pode comprar recursos!</p>
+      <Button
+        onClick={() => {
+          localStorage.setItem("guestMode", "true");
+          setGuestMode(true);
+          setShowLoginModal(false);
+        }}
+        className="w-full bg-[#b3dee2] text-md border-none"
+      >
+        Jogar como Convidado
+      </Button>
+      <p className="text-md text-muted-foreground">Não participa de partidas Rankeadas, nem Rank global e nem pode comprar recursos!</p>
+    </DialogContent>
+  </Dialog>
     </div>
-
   );
 }

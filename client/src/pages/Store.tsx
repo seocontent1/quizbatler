@@ -6,9 +6,6 @@ import { ArrowLeft, Zap, ShoppingBag, Package } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { buyProduct } from "@/services/revenuecat";
-export { store };
-
-import { buyProduct } from "@/services/revenuecat";
 
 async function buyBooster(productId: string) {
   console.log("🛒 Comprando:", productId);
@@ -140,7 +137,16 @@ export default function Store() {
                 className="w-full bg-black text-white text-lg py-6 rounded-xl shadow-[0_4px_0_0_rgba(0,0,0,1)] hover:brightness-110"
               >
                 Comprar
-              </Button>
+              </Button>{packs.map((pack) => (
+                         <button
+                           key={pack.productId}
+                           onClick={() => buyProduct(pack.productId)}
+                           className="btn-purchase"
+                         >
+                           {pack.title}
+                         </button>
+                       ))}
+
             </CardContent>
           </Card>
         ))}
