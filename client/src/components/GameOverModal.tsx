@@ -40,7 +40,7 @@ export default function GameOverModal({
               <img
                     src={vicImage}
                     alt="Vitoria em Cristo!"
-                    className="w-full h-full object-cover rounded-lg"
+                    className="w-full h-full rounded-lg"
                     data-testid="icon-victory"
                   />
             ) : (
@@ -48,19 +48,28 @@ export default function GameOverModal({
                     <img
                       src={defeatImage}
                       alt="Derrota!"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full rounded-lg"
                       data-testid="icon-defeat"
                     />
                   </div>
             )}
           </div>
           <DialogTitle className="text-3xl text-center" data-testid="text-result">
-            {isVictory ? "Vitoria! Glória a Deus!" : "Game Over"}
+            {isVictory ? "Vitoria! Glória a Deus!" : "Oh Não!"}
           </DialogTitle>
           <DialogDescription className="text-center text-base">
-            {isVictory
-              ? "Estamos salvo! Você derrotou Satanas!"
-              : "Satanas venceu! Você precisa estudar mais a Bíblia?"}
+            {isVictory ? (
+              <>
+                <p>Estamos salvo!</p>
+                <p>Você derrotou Satanas!</p>
+              </>
+            ) : (
+              <>
+                <p>Satanas venceu!</p>
+                <p>Você precisa estudar mais a Bíblia!</p>
+              </>
+            )}
+
           </DialogDescription>
         </DialogHeader>
 

@@ -68,21 +68,18 @@ export default function Store() {
       amount: 30,
       price: "R$ 1,99",
       color: "bg-[#C1FFC1]",
-      icon: <Zap className="w-10 h-10" />,
       productId: "booster_30",
     },
     {
       amount: 50,
       price: "R$ 3,99",
       color: "bg-[#06d6a0]",
-      icon: <Package className="w-10 h-10" />,
       productId: "booster_50",
     },
     {
       amount: 100,
       price: "R$ 5,99",
       color: "bg-[#f5cb5c]",
-      icon: <ShoppingBag className="w-10 h-10" />,
       productId: "booster_100",
     },
   ];
@@ -100,7 +97,7 @@ export default function Store() {
         <h1 className="text-7xl font-bold mx-auto">Loja</h1>
 
       </div>
-<div className="flex text-center mb-6"><p>Compre recursos para você usar na sua jornada!<br />Adicione mais tempo ou congele as perguntas!</p></div>
+<div className="flex text-center mb-6"><p>Compre recursos para você usar na sua jornada!<br />Adicione tempo, congele perguntas, revele respostas, além de diveros outros benefícios!</p></div>
       {/* BOOSTER DISPLAY */}
       <Card className="max-w-md w-full mb-8 text-center shadow-xl bg-white/90 backdrop-blur rounded-2xl">
         <CardHeader>
@@ -123,7 +120,7 @@ export default function Store() {
             className={`${pack.color} shadow-[0_6px_0_0_rgba(0,0,0,1)] rounded-2xl text-black`}
           >
             <CardHeader className="text-center space-y-2">
-              <div className="flex justify-center">{pack.icon}</div>
+              <div className="text-4xl flex justify-center">⚡</div>
               <CardTitle className="text-2xl font-bold">
                 +{pack.amount} Boosters
               </CardTitle>

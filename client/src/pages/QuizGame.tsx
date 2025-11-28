@@ -21,7 +21,7 @@ const TIME_PER_LEVEL = {
   easy: 10,
   medium: 10,
   hard: 20,
-  super: 30,
+  super: 20,
 } as const;
 
 const COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 horas
@@ -134,6 +134,18 @@ export default function QuizGame() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isBlocked = !user || guestMode;
   const [showHolyBlast, setShowHolyBlast] = useState(false);
+// perto dos outros useState
+const [showRevealEffect, setShowRevealEffect] = useState(false);
+const [revealEffectData, setRevealEffectData] = useState(null);
+
+const [showConfirm, setShowConfirm] = useState(false);
+const openConfirmPopup = () => setShowConfirm(true);
+const cancelReturn = () => setShowConfirm(false);
+
+const confirmReturn = () => {
+  setShowConfirm(false);
+  handleReturnHome();
+};
 
   const FREEZER_COST = 10;
   const REVEAL_COST = 3;
@@ -157,10 +169,10 @@ export default function QuizGame() {
 
     // ✅ desconta do banco
     await supabase.rpc("decrement_boosters", {
-      amount_to_subtract: 10,
+      amount_to_subtract: 8,
     });
 
-    setBoostsLeft(prev => prev - 10);
+    setBoostsLeft(prev => prev - 8);
   };
     const useReveal = async () => {
       if (usedReveal || boostsLeft < REVEAL_COST) return;
@@ -179,13 +191,14 @@ export default function QuizGame() {
       // ✅ animação do Jesus
       setPlayerAnimation("reveal");
       setPlayerImage("/character_sprites/rev.png");
+      setShowRevealEffect(true);
 
-      // volta ao idle depois
-      setTimeout(() => {
-        setPlayerAnimation("idle");
-        setPlayerImage(PLAYER_IDLE);
-      }, 800);
-    };
+    // posição aproximada do player
+    setRevealEffectData({
+      startX: window.innerWidth / 2,
+      startY: 200
+    });
+ };
 
     async function refreshBoosters() {
       const {
@@ -365,7 +378,7 @@ export default function QuizGame() {
   const timeoutsRef = useRef<number[]>([]);
 
   // guard: perguntas
-  const QUESTIONS_PER_GAME = 200;
+  const QUESTIONS_PER_GAME = 1000;
   const [currentQuestions, setCurrentQuestions] = useState<any[]>(
     () => prepareQuestionsFiltered(MOCK_QUESTIONS, undefined, QUESTIONS_PER_GAME)
   );
@@ -458,7 +471,8 @@ export default function QuizGame() {
   const handleAnswer = (answerIndex: number) => {
     if (!currentQuestion) return;
     if (selectedAnswer !== null) return;
-
+    setPlayerAnimation("idle");
+    setPlayerImage(PLAYER_IDLE);
     setTimerPaused(false);
     setSelectedAnswer(answerIndex);
     const isCorrect = answerIndex === currentQuestion.correctAnswer;
@@ -483,10 +497,10 @@ export default function QuizGame() {
         setOpponentImage(OPPONENT_HIT);
 
         // Calcula e aplica o dano
-        let damage = 3;
-        if (timeTaken < 3) damage = 10;
-        else if (timeTaken >= 3 && timeTaken < 5) damage = 6;
-        else if (timeTaken >= 5 && timeTaken < 8) damage = 4;
+        let damage = 5;
+        if (timeTaken < 5) damage = 10;
+        else if (timeTaken >= 3 && timeTaken < 6) damage = 6;
+        else if (timeTaken >= 6 && timeTaken < 8) damage = 4;
         else if (timeTaken >= 8 && timeTaken <= 10) damage = 3;
 
         setOpponentLife(prev => Math.max(0, prev - damage));
@@ -564,9 +578,10 @@ export default function QuizGame() {
   // ✅ TIMEOUT CORRIGIDO TAMBÉM
   const handleTimeout = () => {
     if (!currentQuestion) return;
+    setPlayerAnimation("idle");
+    setPlayerImage(PLAYER_IDLE);
     setRevealAnswer(false);
     setUsedReveal(false);
-
     setTimerPaused(true);
     setCurrentStreak((prev) => prev + 1);
     setAnswerState("incorrect");
@@ -607,7 +622,7 @@ export default function QuizGame() {
         setTimerPaused(false);
       });
       setQuestionStartTime(Date.now());
-    }, 1500); // Aumentei de 1800ms para 1500ms
+    }, 500); // Aumentei de 1800ms para 1500ms
     timeoutsRef.current.push(tAdvance2);
   };
 
@@ -617,33 +632,24 @@ export default function QuizGame() {
     // DERROTA
     if (playerLife <= 0) {
       setGameState("gameover");
-
-      console.log("=== GAME OVER (derrota) ===");
-
       if (!guestMode && user) {
-        console.log("Enviando score:", score);
         submitScore(score);
       }
     }
-
-    // VITÓRIA
     else if (opponentLife <= 0) {
       setGameState("gameover");
 
-      console.log("=== GAME OVER (vitória) ===");
-
       if (!guestMode && user) {
-        console.log("Enviando score:", score);
         submitScore(score);
       }
     }
+        setShowConfirm(false);
   }, [playerLife, opponentLife]);
 
   useEffect(() => {
     return () => {
       clearAllTimeouts();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // -------------------- Render --------------------
@@ -673,7 +679,7 @@ export default function QuizGame() {
 
         <div className="flex justify-end mb-4">
           <button
-            onClick={handleReturnHome}
+            onClick={openConfirmPopup}
             className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm"
             data-testid="btn-return-home"
           >
@@ -695,6 +701,9 @@ export default function QuizGame() {
             setImpactParticles={setImpactParticles}
             showHolyBlast={showHolyBlast}
             setShowHolyBlast={setShowHolyBlast}
+            showRevealEffect={showRevealEffect}
+            revealEffectData={revealEffectData}
+            setShowRevealEffect={setShowRevealEffect}
           />
 
           <div className="mt-1 mb-1">
@@ -765,22 +774,22 @@ export default function QuizGame() {
 
                 <Button
                   onClick={useFreezer}
-                  disabled={usedFreezer || boostsLeft < 10 || selectedAnswer !== null}
+                  disabled={usedFreezer || boostsLeft < 8 || selectedAnswer !== null}
                   className="px-1 py-1 bg-blue-500 text-white !border-none rounded disabled:opacity-40"
                 >
                 <div className="flex items-center gap-1 w-full min-w-0">
-                  ❄️Freeze ⚡10
+                  ❄️Freeze ⚡8
                   </div>
                 </Button>
 
                 <Button
                   onClick={useReveal}
                   disabled={usedReveal || boostsLeft < REVEAL_COST || selectedAnswer !== null}
-                  className="px-3 py-2 bg-[#99d98c] text-white !border-none rounded disabled:opacity-40"
+                  className="px-3 py-2 bg-[#42e521] text-white !border-none rounded disabled:opacity-40"
                 >
                 <div className="flex items-center gap-1 w-full min-w-0">
                 <Eye className="w-3 h-3 text-white-500" />
-                  Revelação ⚡3
+                  Revelação ⚡10
                   </div>
                 </Button>
 
@@ -827,6 +836,19 @@ export default function QuizGame() {
           </div>
         </div>
       </div>
+{showConfirm && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+    <div className="bg-white p-8 rounded-xl shadow-xl w-xs text-center">
+      <h2 className="text-lg font-bold mb-3">Sair do jogo?</h2>
+      <p className="mb-4">Você perderá todo o progresso do jogo!</p>
+
+      <div className="flex gap-3 justify-center">
+        <button onClick={cancelReturn} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+        <button onClick={confirmReturn} className="px-4 py-2 bg-red-500 text-white rounded-lg">Sair</button>
+      </div>
+    </div>
+  </div>
+)}
 
       <GameOverModal
         isOpen={gameState === "gameover"}

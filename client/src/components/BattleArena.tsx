@@ -2,6 +2,7 @@ import CharacterSprite from "./CharacterSprite";
 import LifeBar from "./LifeBar";
 import AttackEffect from "@/components/AttackEffect";
 import { useRef, useState, useCallback } from "react";
+import RevealLightEffect from "@/components/RevealLightEffect";
 
 interface BattleArenaProps {
   showHolyBlast: boolean;
@@ -16,6 +17,11 @@ interface BattleArenaProps {
   impactParticles: number;
   setImpactParticles: React.Dispatch<React.SetStateAction<number>>;
   playerImgKey: number;
+  showRevealEffect?: boolean;
+showRevealEffect: boolean;
+revealEffectData: { startX: number; startY: number } | null;
+setShowRevealEffect: (value: boolean) => void;
+
 }
 
 export default function BattleArena({
@@ -140,6 +146,7 @@ export default function BattleArena({
 
         {/* PLAYER */}
         <div className="flex flex-col items-center gap-2 relative min-w-0 mt-4">
+
           <div className="drop-shadow-[0_0_10px_rgba(255,255,0,0.8)]">
             <CharacterSprite
               ref={playerRef}
@@ -147,6 +154,7 @@ export default function BattleArena({
               animationState={playerAnimation}
               imageSrc={playerImage}
             />
+            {playerAnimation === "reveal" && <RevealLightEffect />}
           </div>
 
           <div className="w-full max-w-[150px] sm:max-w-[200px] min-w-0">

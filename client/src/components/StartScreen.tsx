@@ -32,10 +32,10 @@ export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-start relative overflow-hidden">
         {/* 🔵 BACKGROUND AZUL */}
-       <div className="absolute top-0 left-0 w-full h-[55vh] bg-[#0038B8] z-0 rounded-b-[40px] overflow-hidden" />
+       <div className="absolute top-0 left-0 w-full h-[50vh] bg-[#0038B8] z-0 rounded-b-[40px] overflow-hidden" />
         {/* 🌟 OVERLAY SVG BASE64 */}
           <div
-            className="absolute top-0 left-0 w-full h-[50vh] rounded-b-[40px] overflow-hidden z-0 bg-[#0038B8]"
+            className="absolute top-0 left-0 w-full h-[47vh] rounded-b-[40px] overflow-hidden z-0 bg-[#0038B8]"
             style={{
               backgroundImage: "url('/character_sprites/bg.svg')",
               backgroundSize: "cover",      // mantém proporção e corta o excesso
