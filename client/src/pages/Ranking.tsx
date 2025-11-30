@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import FooterNav from "@/components/FooterNav";
 
 export default function Ranking() {
   const { user } = useAuth();
@@ -50,7 +51,7 @@ useEffect(() => {
     <div className="relative min-h-screen bg-[#f5f6fa] pb-20">
 
       {/* 🔵 TOPO VIOLETA */}
-      <div className="bg-[#0A37FF] h-[260px] w-full rounded-b-[40px] flex flex-col items-center justify-center text-white relative z-0 min-h-[180px] sm:min-h-[220px] md:min-h-[260px]">
+      <div className="bg-gradient-to-b from-[#003997] to-blue-500 h-[260px] w-full rounded-b-[40px] flex flex-col items-center justify-center text-white relative z-0 min-h-[180px] sm:min-h-[220px] md:min-h-[260px]">
         <button
           onClick={() => window.history.back()}
           className="absolute left-4 top-4 text-white text-sm opacity-80"
@@ -147,6 +148,7 @@ useEffect(() => {
           );
         })}
       </div>
+      <FooterNav />
     </div>
   );
 }

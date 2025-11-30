@@ -16,6 +16,13 @@ import { Link } from "wouter";
 import { Swords, Zap, Crown, Eye, ClockPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { loginWithGoogle } from "@/services/auth";
+//sprites
+import PLAYER_IDLE from "/character_sprites/jesus.png";
+import PLAYER_ATK from "/character_sprites/atk.png";
+import PLAYER_REV from "/character_sprites/rev.png";
+import ENEMY_IDLE from "/character_sprites/enemy.png";
+import ENEMY_HIT from "/character_sprites/enemy_hit.png";
+import ENEMY_ATK from "/character_sprites/luc_atk.png";
 
 const TIME_PER_LEVEL = {
   easy: 10,
@@ -134,18 +141,37 @@ export default function QuizGame() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isBlocked = !user || guestMode;
   const [showHolyBlast, setShowHolyBlast] = useState(false);
-// perto dos outros useState
-const [showRevealEffect, setShowRevealEffect] = useState(false);
-const [revealEffectData, setRevealEffectData] = useState(null);
+  // Moedas ganhas na partida atual
+  const [sessionCoins, setSessionCoins] = useState(0);
+  // evita dar moedas mais de uma vez por partida
+  const coinsAwardedRef = useRef(false);
+  // valor final ganho nesta partida (para exibir no modal)
+  const [earnedThisMatch, setEarnedThisMatch] = useState(0);
+  // perto dos outros useState
+  const [showRevealEffect, setShowRevealEffect] = useState(false);
+  const [revealEffectData, setRevealEffectData] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const openConfirmPopup = () => setShowConfirm(true);
+  const cancelReturn = () => setShowConfirm(false);
 
-const [showConfirm, setShowConfirm] = useState(false);
-const openConfirmPopup = () => setShowConfirm(true);
-const cancelReturn = () => setShowConfirm(false);
+  useEffect(() => {
+    [
+      PLAYER_IDLE,
+      PLAYER_ATK,
+      PLAYER_REV,
+      ENEMY_IDLE,
+      ENEMY_HIT,
+      ENEMY_ATK
+    ].forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
-const confirmReturn = () => {
-  setShowConfirm(false);
-  handleReturnHome();
-};
+    const confirmReturn = () => {
+      setShowConfirm(false);
+      handleReturnHome();
+    };
 
   const FREEZER_COST = 10;
   const REVEAL_COST = 3;
@@ -190,7 +216,7 @@ const confirmReturn = () => {
 
       // ✅ animação do Jesus
       setPlayerAnimation("reveal");
-      setPlayerImage("/character_sprites/rev.png");
+      setPlayerImage(PLAYER_REV);
       setShowRevealEffect(true);
 
     // posição aproximada do player
@@ -257,13 +283,10 @@ const confirmReturn = () => {
     useEffect(() => {
       function handleTabChange() {
         if (document.hidden) {
-          // ✅ força terminar a pergunta imediatamente
-          onTimeout();
+          handleTimeout();
         }
       }
-
       document.addEventListener("visibilitychange", handleTabChange);
-
       return () => {
         document.removeEventListener("visibilitychange", handleTabChange);
       };
@@ -290,13 +313,6 @@ const confirmReturn = () => {
 
       loadBoosters();
 }, []);
-
-  // Image states (paths)
-  const PLAYER_IDLE = "/character_sprites/jesus.png";
-  const PLAYER_ATK  = "/character_sprites/atk.png";
-  const ENEMY_IDLE  = "/character_sprites/enemy.png";
-  const OPPONENT_HIT  = "/character_sprites/enemy_hit.png";
-  const ENEMY_ATK  = "/character_sprites/luc_atk.png";
 
   // KEY + control states
   const [playerImgKey, setPlayerImgKey] = useState(0);
@@ -440,6 +456,8 @@ const confirmReturn = () => {
 
   const handleRestart = () => {
     clearAllTimeouts();
+    coinsAwardedRef.current = false;
+    setEarnedThisMatch(0);
     setGameState("start");
     setPlayerLife(100);
     setOpponentLife(100);
@@ -450,6 +468,8 @@ const confirmReturn = () => {
 
   const handleClose = () => {
     clearAllTimeouts();
+    coinsAwardedRef.current = false;
+    setEarnedThisMatch(0);
     setGameState("start");
     setPlayerLife(100);
     setOpponentLife(100);
@@ -457,6 +477,8 @@ const confirmReturn = () => {
 
   const handleReturnHome = () => {
     clearAllTimeouts();
+    coinsAwardedRef.current = false;
+    setEarnedThisMatch(0);
     setTimerPaused(true);
     resetGame();
     setPlayerLife(100);
@@ -485,7 +507,7 @@ const confirmReturn = () => {
     if (isCorrect) {
       setAnswerState("correct");
       setCorrectAnswers(prev => prev + 1);
-
+      setSessionCoins(prev => prev + 3);
       // ✅ SEQUÊNCIA CORRIGIDA - Player ataca
       setPlayerAnimation("attack");
       setPlayerImage(PLAYER_ATK);
@@ -494,7 +516,7 @@ const confirmReturn = () => {
       // ✅ Oponente leva hit após 600ms
       const hitTimeout = window.setTimeout(() => {
         setOpponentAnimation("hit");
-        setOpponentImage(OPPONENT_HIT);
+        setOpponentImage(ENEMY_HIT);
 
         // Calcula e aplica o dano
         let damage = 5;
@@ -574,7 +596,6 @@ const confirmReturn = () => {
     timeoutsRef.current.push(tAdvance);
   };
 
-
   // ✅ TIMEOUT CORRIGIDO TAMBÉM
   const handleTimeout = () => {
     if (!currentQuestion) return;
@@ -626,24 +647,58 @@ const confirmReturn = () => {
     timeoutsRef.current.push(tAdvance2);
   };
 
-  // -------------------- Efeitos --------------------
+    const addCoinsToUser = async (amount: number) => {
+      try {
+        await supabase.rpc("add_coins_to_inventory", {
+          amount_to_add: amount
+        });
+      } catch (error) {
+        console.error("Erro ao adicionar moedas:", error);
+      }
+    };
 
   useEffect(() => {
-    // DERROTA
-    if (playerLife <= 0) {
-      setGameState("gameover");
-      if (!guestMode && user) {
-        submitScore(score);
-      }
-    }
-    else if (opponentLife <= 0) {
+    const handleGameoverCoins = async () => {
+      if (coinsAwardedRef.current) return;
+
+      if (playerLife > 0 && opponentLife > 0) return;
+
+      coinsAwardedRef.current = true;
       setGameState("gameover");
 
       if (!guestMode && user) {
         submitScore(score);
       }
-    }
-        setShowConfirm(false);
+
+      const playerWon = opponentLife <= 0;
+      let totalEarned = sessionCoins;
+      if (playerWon) totalEarned += 10;
+
+      setEarnedThisMatch(totalEarned);
+
+      if (!guestMode && user && totalEarned > 0) {
+        try {
+           const { data, error } = await supabase.rpc("add_coins_to_inventory", {
+             p_amount: totalEarned,
+             p_user_id: user.id,
+           });
+
+          if (error) {
+            console.error("Erro RPC add_coins_to_inventory:", error);
+          } else {
+            console.log("RPC add_coins_to_inventory retornou:", data);
+          }
+        } catch (err) {
+          console.error("Erro ao chamar RPC add_coins_to_inventory:", err);
+        }
+      }
+
+      setSessionCoins(0);
+    };
+
+    handleGameoverCoins();
+
+    setShowConfirm(false);
   }, [playerLife, opponentLife]);
 
   useEffect(() => {
@@ -674,7 +729,7 @@ const confirmReturn = () => {
           correctAnswers={correctAnswers}
           currentStreak={currentStreak}
           totalScore={score}
-          boostsLeft={boostsLeft} // ✅ ENVIANDO O VALOR
+          boostsLeft={boostsLeft}
         />
 
         <div className="flex justify-end mb-4">
@@ -717,8 +772,8 @@ const confirmReturn = () => {
 
             <Timer
               duration={TIME_PER_LEVEL[difficulty]}
-              extraTimeEvent={extraTimeEvent}     // ✅ novo
-              extraTimeAmount={extraTimeAmount}   // ✅ novo
+              extraTimeEvent={extraTimeEvent}
+              extraTimeAmount={extraTimeAmount}
               onTimeout={handleTimeout}
               isPaused={timerPaused || isFrozen}
               reset={timerReset}
@@ -858,14 +913,15 @@ const confirmReturn = () => {
         totalQuestions={currentQuestions.length}
         onRestart={handleRestart}
         onClose={handleClose}
+        earnedCoins={earnedThisMatch}
       />
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
     <DialogContent className="text-center max-w-sm">
       <DialogHeader className="text-left">
         <DialogTitle>Faça login para continuar</DialogTitle>
-        <p className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           Você precisa estar logado para percorrer uma jornada global.
-        </p>
+        </span>
       </DialogHeader>
 
       <Button
@@ -877,7 +933,7 @@ const confirmReturn = () => {
       >
         Entrar com Google
       </Button>
-      <p className="text-md text-muted-foreground">Participa de partidas Rankeadas, Rank global e pode comprar recursos!</p>
+      <span className="text-md text-muted-foreground">Participa de partidas Rankeadas, Rank global e pode comprar recursos!</span>
       <Button
         onClick={() => {
           localStorage.setItem("guestMode", "true");
@@ -888,9 +944,10 @@ const confirmReturn = () => {
       >
         Jogar como Convidado
       </Button>
-      <p className="text-md text-muted-foreground">Não participa de partidas Rankeadas, nem Rank global e nem pode comprar recursos!</p>
+      <span className="text-md text-muted-foreground">Não participa de partidas Rankeadas, nem Rank global e nem pode comprar recursos!</span>
     </DialogContent>
   </Dialog>
-    </div>
+
+</div>
   );
 }

@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trophy, RotateCcw } from "lucide-react";
+import { useState } from "react";
 import vicImage from "/salvo.jpg";
 import defeatImage from "/fogo.jpg";
 
@@ -16,6 +17,7 @@ interface GameOverModalProps {
   finalScore: number;
   correctAnswers: number;
   totalQuestions: number;
+  earnedCoins?: number;
   onRestart: () => void;
   onClose: () => void;
 }
@@ -28,8 +30,10 @@ export default function GameOverModal({
   totalQuestions,
   onRestart,
   onClose,
+  earnedCoins,
 }: GameOverModalProps) {
   const accuracy = Math.round((correctAnswers / totalQuestions) * 100);
+  const [sessionCoins, setSessionCoins] = useState(0);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -60,13 +64,13 @@ export default function GameOverModal({
           <DialogDescription className="text-center text-base">
             {isVictory ? (
               <>
-                <p>Estamos salvo!</p>
-                <p>Você derrotou Satanas!</p>
+              <span className="block">Estamos salvo!</span>
+              <span className="block">Você derrotou Satanas!</span>
               </>
             ) : (
               <>
-                <p>Satanas venceu!</p>
-                <p>Você precisa estudar mais a Bíblia!</p>
+              <span className="block">Satanas venceu!</span>
+              <span className="block">Você precisa estudar mais a Bíblia!</span>
               </>
             )}
 
@@ -77,6 +81,12 @@ export default function GameOverModal({
           <div className="flex justify-between items-center p-4 bg-muted rounded-md">
             <span className="font-semibold">Pontuação</span>
             <span className="text-2xl font-bold font-mono" data-testid="text-final-score">{finalScore}</span>
+          </div>
+
+          <div className="grid gap-4 py-4">
+          <div className="flex justify-between items-center p-4 bg-muted rounded-md">
+          <span className="font-semibold">💰 Moedas ganhas</span>
+          <span className="text-2xl font-bold font-mono" data-testid="text-final-score">{earnedCoins}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -96,6 +106,7 @@ export default function GameOverModal({
             <RotateCcw className="w-5 h-5 mr-2" />
             Jogar Novamente
           </Button>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

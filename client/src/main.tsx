@@ -16,4 +16,4 @@ function giveBoost(amount: number) {
 }
 
 // inicializar compras
-initRevenueCat();
+//initRevenueCat();

@@ -250,7 +250,6 @@
     }
   }
 
-
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-8px) rotate(-2deg); }
@@ -336,5 +335,37 @@
     inset: -1px;
   }
 }
+.page-with-footer {
+  padding-bottom: 50px; /* espaço para o footer */
+}
+/* ----- ANIMAÇÃO DE EXPLOSÃO / PARTICLES ----- */
+@keyframes particles {
+  0% { opacity: 1; transform: scale(0.4) translateY(10px); }
+  60% { opacity: 0.9; transform: scale(1.2) translateY(-10px); }
+  100% { opacity: 0; transform: scale(1.8) translateY(-20px); }
+}
 
+/* ----- ANIMAÇÃO DO BADGE (CRESCIMENTO HEROICO) ----- */
+@keyframes badgePop {
+  0% { transform: scale(0.1) rotate(-10deg); }
+  60% { transform: scale(1.25) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
 
+/* ----- GLOW PULSANTE ATRÁS DO BADGE ----- */
+@keyframes badgeGlow {
+  0%, 100% { opacity: 0.25; transform: scale(1.4); }
+  50% { opacity: 0.45; transform: scale(1.55); }
+}
+
+/* ----- TEXTO SUBINDO SUAVE ----- */
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ----- FADE IN DO CONTAINER ----- */
+@keyframes fadeInEpic {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}

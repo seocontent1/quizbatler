@@ -1,25 +1,84 @@
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { Swords, Zap, Flame, StarHalf, Shield } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Swords, Zap, Flame, StarHalf, Shield, LockKeyhole } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { loginWithGoogle, logout } from "@/services/auth";
+import { supabase } from "@/lib/supabase";
+import { useLocation } from "wouter";
+import FooterNav from "@/components/FooterNav";
 
-interface StartScreenProps {
-  onStart: (difficulty: "easy" | "medium" | "hard") => void;
-  boostsLeft: number;
-}
+const LEVEL_REQUIREMENTS = {
+  easy: 0,
+  medium: 500,
+  hard: 1500,
+  super: 3000,
+} as const;
 
 export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const { user, loading } = useAuth();
+  const [coins, setCoins] = useState(0);
+  const [score, setScore] = useState(0);
     // guestMode armazenado no navegador
   const [guestMode, setGuestMode] = useState(
     localStorage.getItem("guestMode") === "true"
   );
+useEffect(() => {
+  async function loadCoins() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("user_inventory")
+      .select("coins")
+      .eq("user_id", user.id)
+      .single();
+
+    if (data) setCoins(data.coins);
+  }
+
+  loadCoins();
+}, []);
+
+useEffect(() => {
+  async function loadUserData() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // CARREGAR COINS
+    const { data: inv } = await supabase
+      .from("user_inventory")
+      .select("coins")
+      .eq("user_id", user.id)
+      .single();
+
+    if (inv) setCoins(inv.coins);
+
+    // CARREGAR SCORE (coluna: score)
+    const { data: scoreData } = await supabase
+      .from("scores")
+      .select("score")
+      .eq("email", user.email)
+      .single();
+
+    if (scoreData) {
+      setScore(scoreData.score);
+    }
+  }
+
+  loadUserData();
+}, []);
+
+function canPlayLevel(level: "easy" | "medium" | "hard" | "super") {
+  // precisa estar logado OU como convidado
+  if (!user && !guestMode) return false;
+
+  // precisa ter score suficiente
+  return score >= LEVEL_REQUIREMENTS[level];
+}
 
   function startGuest() {
     localStorage.setItem("guestMode", "true");
@@ -30,7 +89,7 @@ export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
   const buttonsLocked = !user && !guestMode;
   const storeLocked = !user && !guestMode;
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start relative overflow-hidden">
+    <div className="min-h-screen flex flex-col pb-[94px] items-center justify-start relative overflow-hidden">
         {/* 🔵 BACKGROUND AZUL */}
        <div className="absolute top-0 left-0 w-full h-[50vh] bg-[#0038B8] z-0 rounded-b-[40px] overflow-hidden" />
         {/* 🌟 OVERLAY SVG BASE64 */}
@@ -51,7 +110,7 @@ export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
           className="relative z-20 p-8"
         />
 
-      <div className="w-full space-y-8 relative z-20">
+      <div className="w-full space-y-8 relative z-30">
 
         <div className="text-center">
           {loading ? (
@@ -70,7 +129,7 @@ export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
           ) : null}
         </div>
 
-        <Card className="w-full max-w-lg p-4 mx-auto overflow-visible">
+        <Card className="w-full max-w-lg p-4 mx-auto overflow-visible relative z-40">
          <div className="flex justify-evenly">
            <div
              onClick={() => {
@@ -94,146 +153,196 @@ export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
             {/* FÁCIL */}
             <Button
               onClick={() => {
-                  if (buttonsLocked) {
-                    setShowLoginModal(true);
-                    return;
-                  }
-                    onStart("easy");
-                }}
-                size="lg"
-                variant="outline"
-                className={cn(
+                if (!user && !guestMode) {
+                  setShowLoginModal(true);
+                  return;
+                }
+
+                if (!canPlayLevel("easy")) {
+                  return; // logado, mas sem pontos suficientes
+                }
+
+                onStart("easy"); // pode jogar
+              }}
+              disabled={user && !canPlayLevel("easy")}
+              size="lg"
+              variant="outline"
+              className={cn(
                 "w-full",
-                buttonsLocked && "opacity-50 opacity-50 select-none",
+                (user && !canPlayLevel("easy")) && "opacity-50 select-none",
                 "!border-2 !border-black !rounded-md",
                 "text-black",
-                // --- Responsividade ---
                 "px-4 py-3 md:px-6",
                 "h-auto min-h-[64px]",
                 "text-base md:text-lg",
                 "gap-3 md:gap-4",
-                // --- Sombra estilo Feastables ---
                 "shadow-[0_6px_0_0_rgba(0,0,0,1)] md:shadow-[0_8px_0_0_rgba(0,0,0,1)]"
               )}
             >
               <StarHalf className="w-6 h-6 text-primary" />
+
               <div className="flex-1 text-left leading-tight">
                 <div className="font-semibold">Nível Fácil</div>
-                <div className="text-black">Ler a Bíblia às vezes!</div>
+
+                <div className="text-black">
+                  {!user
+                    ? "Faça login para jogar"
+                    : score < LEVEL_REQUIREMENTS.easy
+                      ? `Precisa de ${LEVEL_REQUIREMENTS.easy} pontos`
+                      : "Ler a Bíblia às vezes!"}
+                </div>
               </div>
             </Button>
+
 
             {/* MÉDIO */}
             <Button
               onClick={() => {
-                  if (buttonsLocked) {
-                    setShowLoginModal(true);
-                    return;
-                  }
-                  onStart("medium");
+                if (!user) {
+                  setShowLoginModal(true); // usuário não logado → abrir popup Google
+                  return;
+                }
+
+                if (!canPlayLevel("medium")) {
+                  return; // logado, mas sem pontos suficientes
+                }
+
+                onStart("medium"); // pode jogar
               }}
+              disabled={!user || !canPlayLevel("medium")}
               size="lg"
               variant="outline"
               className={cn(
-                "w-full",
-                buttonsLocked && "opacity-50 select-none",
+                "w-full flex items-center gap-3",
+                (!user || !canPlayLevel("medium")) && "opacity-50 select-none",
                 "!border-2 !border-black !rounded-md",
                 "text-black",
-                // --- Responsividade ---
                 "px-4 py-3 md:px-6",
                 "h-auto min-h-[64px]",
                 "text-base md:text-lg",
                 "gap-3 md:gap-4",
-                // --- Sombra estilo Feastables ---
                 "shadow-[0_6px_0_0_rgba(0,0,0,1)] md:shadow-[0_8px_0_0_rgba(0,0,0,1)]"
               )}
             >
-              <Swords className="w-6 h-6 text-cyan-400" />
+              <StarHalf className="w-6 h-6 text-primary" />
+
               <div className="flex-1 text-left leading-tight">
                 <div className="font-semibold">Nível Médio</div>
-                <div className="text-black">Estudante da Bíblia</div>
+
+                <div className="text-black">
+                  {!user
+                    ? "Faça login para jogar"
+                    : score < LEVEL_REQUIREMENTS.medium
+                      ? `Precisa de ${LEVEL_REQUIREMENTS.medium} pontos`
+                      : "Estudante da Bíblia"}
+                </div>
               </div>
+              {/* ÍCONE DIREITA — SOMENTE SE BLOQUEADO */}
+              {(!user || !canPlayLevel("medium")) && (
+                <LockKeyhole className="!w-[2rem] !h-[2rem] text-black" />
+              )}
             </Button>
 
             {/* DIFÍCIL */}
             <Button
-             onClick={() => {
-                 if (buttonsLocked) {
-                   setShowLoginModal(true);
-                   return;
-                 }
-                 onStart("hard");
+              onClick={() => {
+                if (!user) {
+                  setShowLoginModal(true); // usuário não logado → abrir popup Google
+                  return;
+                }
+
+                if (!canPlayLevel("hard")) {
+                  return; // logado, mas sem pontos suficientes
+                }
+
+                onStart("hard"); // pode jogar
               }}
+              disabled={!user || !canPlayLevel("hard")}
               size="lg"
               variant="outline"
               className={cn(
                 "w-full",
-                buttonsLocked && "opacity-50 select-none",
+                (!user || !canPlayLevel("hard")) && "opacity-50 select-none",
                 "!border-2 !border-black !rounded-md",
                 "text-black",
-                // --- Responsividade ---
                 "px-4 py-3 md:px-6",
                 "h-auto min-h-[64px]",
                 "text-base md:text-lg",
                 "gap-3 md:gap-4",
-                // --- Sombra estilo Feastables ---
                 "shadow-[0_6px_0_0_rgba(0,0,0,1)] md:shadow-[0_8px_0_0_rgba(0,0,0,1)]"
               )}
             >
-              <Flame className="w-6 h-6 text-orange-400" />
+              <StarHalf className="w-6 h-6 text-primary" />
+
               <div className="flex-1 text-left leading-tight">
                 <div className="font-semibold">Nível Difícil</div>
-                <div className="text-black">Nível Teólogo.</div>
+
+                <div className="text-black">
+                  {!user
+                    ? "Faça login para jogar"
+                    : score < LEVEL_REQUIREMENTS.hard
+                      ? `Precisa de ${LEVEL_REQUIREMENTS.hard} pontos`
+                      : "Nível Teólogo"}
+                </div>
               </div>
+                  {/* ÍCONE DIREITA — SOMENTE SE BLOQUEADO */}
+                  {(!user || !canPlayLevel("hard")) && (
+                    <LockKeyhole className="!w-[2rem] !h-[2rem] text-black" />
+                  )}
             </Button>
 
             {/* SUPER */}
             <Button
-            onClick={() => {
-                if (buttonsLocked) {
-                  setShowLoginModal(true);
+              onClick={() => {
+                if (!user) {
+                  setShowLoginModal(true); // usuário não logado → abrir popup Google
                   return;
                 }
-                onStart("super");
+
+                if (!canPlayLevel("super")) {
+                  return; // logado, mas sem pontos suficientes
+                }
+
+                onStart("super"); // pode jogar
               }}
+              disabled={!user || !canPlayLevel("super")}
               size="lg"
               variant="outline"
               className={cn(
                 "w-full",
-                buttonsLocked && "opacity-50 select-none",
+                (!user || !canPlayLevel("super")) && "opacity-50 select-none",
                 "!border-2 !border-black !rounded-md",
                 "text-black",
-                // --- Responsividade ---
                 "px-4 py-3 md:px-6",
                 "h-auto min-h-[64px]",
                 "text-base md:text-lg",
                 "gap-3 md:gap-4",
-                // --- Sombra estilo Feastables ---
                 "shadow-[0_6px_0_0_rgba(0,0,0,1)] md:shadow-[0_8px_0_0_rgba(0,0,0,1)]"
               )}
             >
-              <Shield className="w-6 h-6 text-destructive" />
+              <StarHalf className="w-6 h-6 text-primary" />
+
               <div className="flex-1 text-left leading-tight">
-              <div className="font-semibold">Nível Exegeta</div>
-              <div className="text-black">Especialista em Bíblia.</div>
+                <div className="font-semibold">Nível Exegeta</div>
+
+                <div className="text-black">
+                  {!user
+                    ? "Faça login para jogar"
+                    : score < LEVEL_REQUIREMENTS.super
+                      ? `Precisa de ${LEVEL_REQUIREMENTS.super} pontos`
+                      : "Especialista em Bíblia"}
+                </div>
               </div>
+                    {/* ÍCONE DIREITA — SOMENTE SE BLOQUEADO */}
+                    {(!user || !canPlayLevel("super")) && (
+                      <LockKeyhole className="!w-[2rem] !h-[2rem] text-black" />
+                    )}
             </Button>
 
           </div>
         </Card>
-        <div className="w-full max-w-lg mx-auto p-4 overflow-visible">
-        <Button
-          asChild
-          size="lg"
-          variant="outline"
-          className="w-full !border-2 !border-black !rounded-md px-4 py-3"
-        >
-          <Link href="/ranking">
-            Ver Ranking Global
-          </Link>
-        </Button>
-        </div>
-        <Card className="bg-muted/50 max-w-2xl p-4 mx-auto w-fit">
+
+        <Card className="bg-muted/50 max-w-2xl p-4 mx-auto w-fit relative z-20">
           <h3 className="font-semibold mb-3">Como Jogar</h3>
           <ul className="space-y-2 text-muted-foreground">
             <li>• O tempo também é seu inimigo. Seja rápido ou perderemos!</li>
@@ -277,6 +386,7 @@ export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
           </DialogContent>
         </Dialog>
       </div>
+      <FooterNav />
     </div>
   );
 }

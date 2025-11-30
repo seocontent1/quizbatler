@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -10,7 +10,7 @@ import NotFound from "@/pages/not-found";
 import RankingPage from "@/pages/Ranking";
 import StartPage from "@/pages/StartPage";
 import Store from "@/pages/Store";
-
+import ProfilePage from "@/pages/Profile";
 import { useAuth } from "@/hooks/useAuth";
 import { initRevenueCat } from "@/services/revenuecat";
 
@@ -20,14 +20,16 @@ function Router() {
       <Route path="/start" component={StartPage} />
       <Route path="/store" component={Store} />
       <Route path="/ranking" component={RankingPage} />
-      <Route path="/" component={QuizGame} />
+      <Route path="/profile" component={ProfilePage} />
+      <Route exact path="/" component={QuizGame} />
       <Route component={NotFound} />
+
     </Switch>
   );
 }
-
 export default function App() {
   const { user } = useAuth();
+  const [location] = useLocation();
 
   useEffect(() => {
     if (user) {
