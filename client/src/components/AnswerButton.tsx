@@ -14,8 +14,8 @@ export default function AnswerButton({ text, onClick, state, disabled, index }: 
   const stateStyles = {
     default: "",
     selected: "",
-    correct: "bg-[#73fbd3] text-black",
-    incorrect: "bg-destructive",
+    correct: "bg-[#57cc99] text-black border-0",
+    incorrect: "bg-[#ff6b6b] text-black border-0",
   };
 
   return (
@@ -24,10 +24,10 @@ export default function AnswerButton({ text, onClick, state, disabled, index }: 
       disabled={disabled}
       variant={state === "default" || state === "selected" ? "outline" : "default"}
       className={cn(
-          "text-base sm:text-lg font-medium justify-start relative overflow-hidden",
-          "py-2 sm:py-4",
-          "min-h-12 sm:min-h-16",
-          "border-none",
+        "text-base sm:text-lg font-medium justify-start relative overflow-hidden",
+        "py-2 sm:py-4",
+        "min-h-12 sm:min-h-16",
+        "disabled:opacity-100",
         stateStyles[state]
       )}
       data-testid={`button-answer-${index}`}

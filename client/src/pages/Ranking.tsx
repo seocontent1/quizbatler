@@ -152,4 +152,3 @@ useEffect(() => {
     </div>
   );
 }
-// @ts-ignore

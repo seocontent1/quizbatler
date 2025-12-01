@@ -12,10 +12,11 @@ import { submitScore } from "@/services/ranking";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Swords, Zap, Crown, Eye, ClockPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { loginWithGoogle } from "@/services/auth";
+
 //sprites
 import PLAYER_IDLE from "/character_sprites/jesus.png";
 import PLAYER_ATK from "/character_sprites/atk.png";
@@ -23,6 +24,14 @@ import PLAYER_REV from "/character_sprites/rev.png";
 import ENEMY_IDLE from "/character_sprites/enemy.png";
 import ENEMY_HIT from "/character_sprites/enemy_hit.png";
 import ENEMY_ATK from "/character_sprites/luc_atk.png";
+
+type Question = {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  difficulty: string;
+};
 
 const TIME_PER_LEVEL = {
   easy: 10,
@@ -153,6 +162,12 @@ export default function QuizGame() {
   const [showConfirm, setShowConfirm] = useState(false);
   const openConfirmPopup = () => setShowConfirm(true);
   const cancelReturn = () => setShowConfirm(false);
+//spech
+  const [index, setIndex] = useState(0);
+
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const questions = MOCK_QUESTIONS as Question[];
 
   useEffect(() => {
     [
@@ -337,7 +352,7 @@ export default function QuizGame() {
   }, [gameState]);
   const [difficulty, setDifficulty] = useState<
   "easy" | "medium" | "hard" | "super"
-  >("medium");
+  >("easy");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [playerLife, setPlayerLife] = useState(100);
   const [opponentLife, setOpponentLife] = useState(100);
@@ -354,6 +369,7 @@ export default function QuizGame() {
   const [questionStartTime, setQuestionStartTime] = useState(0);
   const [impactParticles, setImpactParticles] = useState(0);
   const [incorrectAnswers, setIncorrectAnswers] = useState(0);
+  const [location] = useLocation();
   // BENEFÍCIOS
   const [timeBoosts, setTimeBoosts] = useState(1); // começa com 1 carga
   const [freezeAvailable, setFreezeAvailable] = useState(1); // começa com 1 freezer
@@ -490,7 +506,7 @@ export default function QuizGame() {
 
   // Trecho corrigido do handleAnswer - substitua a função completa
 
-  const handleAnswer = (answerIndex: number) => {
+  const handleAnswer = async (answerIndex: number) => {
     if (!currentQuestion) return;
     if (selectedAnswer !== null) return;
     setPlayerAnimation("idle");
@@ -498,9 +514,7 @@ export default function QuizGame() {
     setTimerPaused(false);
     setSelectedAnswer(answerIndex);
     const isCorrect = answerIndex === currentQuestion.correctAnswer;
-
-    // mark question as answered (cooldown by ID)
-    try { addAnswered(currentQuestion.id); } catch (e) { /* ignore */ }
+    setSelectedAnswer(answerIndex);
 
     const timeTaken = (Date.now() - questionStartTime) / 1000;
 
@@ -723,7 +737,7 @@ export default function QuizGame() {
 
   return (
     <div className="min-h-screen p-1 bg-gradient-to-b from-background via-background to-muted/10">
-      <div className="max-w-6xl mx-auto p-3 sm:p-4 pt-6">
+      <div className="max-w-6xl mx-auto p-1 sm:p-2">
       <div className="max-w-3xl mx-auto space-y-3">
         <ScoreDisplay
           correctAnswers={correctAnswers}
@@ -851,7 +865,7 @@ export default function QuizGame() {
               </div>
             ) : (
               /* ✅ Caso não tenha booster, mostrar compra */
-              <div className="flex justify-center w-full mt-4">
+              <div className="justify-center w-full mt-4">
                {isBlocked ? (
                  <button
                    onClick={() => setShowLoginModal(true)}

@@ -29,13 +29,17 @@ export default function ProfilePage() {
   const [coins, setCoins] = useState(0);
   const [boosters, setBoosters] = useState(0);
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [lastTitle, setLastTitle] = useState("");
-  const { user, setUser } = useAuth();
-  const [loadingData, setLoadingData] = useState(true);
+  const { user } = useAuth();
+
+  // Estados de carregamento individuais (opcional, para animações)
+  const [loadingScore, setLoadingScore] = useState(true);
+  const [loadingInventory, setLoadingInventory] = useState(true);
+
+  const title = getTitleByScore(score);
   const nextTitle = TITLES.find((t) => t.minScore > score) || null;
   const progress = nextTitle ? Math.min(100, (score / nextTitle.minScore) * 100) : 100;
 
-  // preload badge images
+  // Preload badge images
   useEffect(() => {
     TITLES.forEach(t => {
       if (t.badge) {
@@ -45,45 +49,53 @@ export default function ProfilePage() {
     });
   }, []);
 
+  // 🚀 CARREGAMENTO PARALELO E INDEPENDENTE
   useEffect(() => {
-      const fetchData = async () => {
-        const { data: auth } = await supabase.auth.getUser();
-        if (!auth || !auth.user) {
-          setLoadingData(false);
-          return;
-        }
+    const fetchScore = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth?.user) {
+        setLoadingScore(false);
+        return;
+      }
 
-        // SCORE
-        const { data: scoreData } = await supabase
-          .from("scores")
-          .select("score")
-          .eq("email", auth.user.email)
-          .maybeSingle();
+      const { data: scoreData } = await supabase
+        .from("scores")
+        .select("score")
+        .eq("email", auth.user.email)
+        .maybeSingle();
 
-        setScore(scoreData?.score ?? 0);
+      setScore(scoreData?.score ?? 0);
+      setLoadingScore(false);
+    };
 
-        // INVENTORY
-        const { data: inv } = await supabase
-          .from("user_inventory")
-          .select("coins, boosters")
-          .eq("user_id", auth.user.id)
-          .maybeSingle();
-
-        setCoins(inv?.coins ?? 0);
-        setBoosters(inv?.boosters ?? 0);
-
-        // DESLIGA LOADING
-        setLoadingData(false);
-      };
-
-      fetchData();
-    }, []);
-
-  const title = getTitleByScore(score);
+    fetchScore();
+  }, []);
 
   useEffect(() => {
-    if (!user) return;
-    if (loadingData) return; // ⛔ só roda quando os dados já carregaram
+    const fetchInventory = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth?.user) {
+        setLoadingInventory(false);
+        return;
+      }
+
+      const { data: inv } = await supabase
+        .from("user_inventory")
+        .select("coins, boosters")
+        .eq("user_id", auth.user.id)
+        .maybeSingle();
+
+      setCoins(inv?.coins ?? 0);
+      setBoosters(inv?.boosters ?? 0);
+      setLoadingInventory(false);
+    };
+
+    fetchInventory();
+  }, []);
+
+  // Level up check (só roda após carregar o score)
+  useEffect(() => {
+    if (!user || loadingScore) return;
 
     const checkLevelUp = async () => {
       const { data: scoreRow } = await supabase
@@ -94,7 +106,6 @@ export default function ProfilePage() {
 
       const savedTitle = scoreRow?.last_title || null;
 
-      // primeira vez → salva e não mostra popup
       if (!savedTitle) {
         await supabase
           .from("scores")
@@ -103,13 +114,10 @@ export default function ProfilePage() {
         return;
       }
 
-      // se não mudou → não mostra popup
       if (savedTitle === title.title) return;
 
-      // mudou → popup
       setShowLevelUp(true);
 
-      // salva o novo título
       await supabase
         .from("scores")
         .update({ last_title: title.title })
@@ -119,84 +127,9 @@ export default function ProfilePage() {
     };
 
     checkLevelUp();
-  }, [user, loadingData, title]);
+  }, [user, loadingScore, title]);
 
-
-if (loadingData) {
-  return (
-    <div className="min-h-screen p-6 flex justify-center">
-      <div className="w-full max-w-xl space-y-6 animate-pulse">
-
-        {/* Avatar + título */}
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-20 h-20 rounded-full bg-gray-200" />
-          <div className="h-6 w-40 bg-gray-200 mx-auto rounded" />
-          <div className="h-4 w-32 bg-gray-100 mx-auto rounded" />
-        </div>
-
-        {/* Card do título */}
-        <div className="bg-gray-100 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gray-200 rounded-xl" />
-            <div className="space-y-2 flex-1">
-              <div className="h-5 w-32 bg-gray-100 rounded" />
-              <div className="h-4 w-48 bg-gray-100 rounded" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="h-4 w-40 bg-gray-200 rounded" />
-            <div className="h-3 w-full bg-gray-100 rounded" />
-            <div className="h-3 w-24 bg-gray-200 rounded" />
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-5">
-          <div className="bg-gray-100 rounded-2xl p-5 flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-200 rounded" />
-            <div className="space-y-2">
-              <div className="h-4 w-20 bg-gray-100 rounded" />
-              <div className="h-5 w-14 bg-gray-200 rounded" />
-            </div>
-          </div>
-
-          <div className="bg-gray-100 rounded-2xl p-5 flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-200 rounded" />
-            <div className="space-y-2">
-              <div className="h-4 w-20 bg-gray-100 rounded" />
-              <div className="h-5 w-14 bg-gray-200 rounded" />
-            </div>
-          </div>
-        </div>
-
-        {/* Boosters */}
-        <div className="bg-gray-100 rounded-2xl p-5 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gray-200 rounded" />
-          <div className="space-y-2">
-            <div className="h-4 w-20 bg-gray-100 rounded" />
-            <div className="h-5 w-12 bg-gray-200 rounded" />
-          </div>
-        </div>
-
-        {/* Badges */}
-        <div className="bg-gray-100 rounded-2xl p-5">
-          <div className="h-5 w-40 bg-gray-200 rounded mb-4" />
-          <div className="grid grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="space-y-2 flex flex-col items-center">
-                <div className="w-12 h-12 bg-gray-100 rounded-md" />
-                <div className="h-3 w-14 bg-gray-200 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
+  // ✨ RENDERIZAÇÃO IMEDIATA - sem loading state global
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#003997] to-blue-500 p-6 pb-20 flex justify-center">
       <div className="w-full max-w-xl space-y-6">
@@ -235,7 +168,7 @@ if (loadingData) {
 
               <div className="w-full bg-gray-200 h-3 rounded-full mt-2 overflow-hidden">
                 <div
-                  className="h-full bg-blue-500 transition-all"
+                  className="h-full bg-blue-500 transition-all duration-500"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -247,33 +180,33 @@ if (loadingData) {
           )}
         </div>
 
-        {/* stats */}
-        <div className="grid grid-cols-3 gap-5">
-          <div className="bg-white rounded-full shadow-md border border-black/10 p-5 flex items-center gap-3">
-            <Coins size={40} color="#fca311" strokeWidth={1.75} />
-            <div>
-              <p className="text-gray-700 text-sm">Moedas</p>
-              <p className="text-2xl font-bold">{coins}</p>
-            </div>
-          </div>
+       <div className="grid grid-cols-3 gap-3">
 
-          <div className="bg-white rounded-full shadow-md border border-black/10 p-5 flex items-center gap-3">
-            <Swords size={40} color="#0080ff" strokeWidth={1.75} />
-            <div>
-              <p className="text-gray-700 text-sm">Score Total</p>
-              <p className="text-2xl font-bold">{score}</p>
-            </div>
-          </div>
+         <div className="bg-white rounded-xl lg:rounded-full shadow-md border border-black/10 p-3 flex items-center gap-2">
+           <Coins size={36} color="#fca311" strokeWidth={2.75} />
+           <div>
+             <p className="text-gray-700 text-xs">Moedas</p>
+             <p className="text-xl font-bold">{coins}</p>
+           </div>
+         </div>
 
-             {/* BOOSTERS */}
-            <div className="bg-white rounded-full shadow-md border border-black/10 p-5 flex items-center gap-3">
-              <Zap size={40} color="#efbb50" strokeWidth={1.75} />
-              <div>
-                <p className="text-sm text-gray-700">Boosters</p>
-                <p className="text-xl font-bold">{boosters}</p>
-              </div>
-            </div>
-        </div>
+         <div className="bg-white rounded-xl lg:rounded-full shadow-md border border-black/10 p-3 flex items-center gap-2">
+           <Swords size={36} color="#0080ff" strokeWidth={2.75} />
+           <div>
+             <p className="text-gray-700 text-xs">Pontos</p>
+             <p className="text-xl font-bold">{score}</p>
+           </div>
+         </div>
+
+         <div className="bg-white rounded-xl lg:rounded-full shadow-md border border-black/10 p-3 flex items-center gap-2">
+           <Zap size={36} color="#efbb50" strokeWidth={2.75} />
+           <div>
+             <p className="text-gray-700 text-xs">Boosters</p>
+             <p className="text-xl font-bold">{boosters}</p>
+           </div>
+         </div>
+
+       </div>
 
         {/* badges gallery */}
         <div className="bg-white rounded-2xl shadow-md border border-black/10 p-5">
@@ -306,19 +239,13 @@ if (loadingData) {
         {/* level-up toast */}
         {showLevelUp && (
           <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none">
-
-            {/* fundo escuro suave */}
             <div className="absolute inset-0 animate-fadeInEpic"></div>
 
-            {/* container principal */}
             <div className="relative bg-white rounded-2xl px-6 py-5 shadow-2xl animate-fadeInEpic scale-100 text-center">
-
-              {/* glow atrás da badge */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="absolute w-28 h-28 bg-yellow-300 rounded-full blur-xl opacity-30 animate-badgeGlow"></div>
               </div>
 
-              {/* particles (4 explosões ao redor) */}
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
@@ -331,14 +258,12 @@ if (loadingData) {
                 ></div>
               ))}
 
-              {/* badge */}
               <img
                 src={title.badge}
                 alt="badge"
                 className="relative z-10 w-24 h-24 mx-auto animate-badgePop"
               />
 
-              {/* textos */}
               <h2 className="relative z-10 mt-3 text-xl font-extrabold text-gray-900 animate-floatUp">
                 Novo Título Desbloqueado!
               </h2>

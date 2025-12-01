@@ -13,6 +13,8 @@ import Store from "@/pages/Store";
 import ProfilePage from "@/pages/Profile";
 import { useAuth } from "@/hooks/useAuth";
 import { initRevenueCat } from "@/services/revenuecat";
+import { Capacitor } from "@capacitor/core";
+import { setAppStatusBar } from "./utils/statusBar";
 
 function Router() {
   return (
@@ -36,6 +38,13 @@ export default function App() {
       initRevenueCat(user.id);
     }
   }, [user]);
+
+    useEffect(() => {
+        // roda só quando empacotado (android/ios)
+        if (Capacitor.getPlatform() !== "web") {
+          setAppStatusBar();
+        }
+      }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
