@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { initRevenueCat } from "@/services/revenuecat";
 import { Capacitor } from "@capacitor/core";
 import { setAppStatusBar } from "./utils/statusBar";
+import TasksPage from "@/pages/TasksPage";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/store" component={Store} />
       <Route path="/ranking" component={RankingPage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/tasks" component={TasksPage} />
       <Route exact path="/" component={QuizGame} />
       <Route component={NotFound} />
 

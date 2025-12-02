@@ -129,7 +129,7 @@ export default function Store() {
       </div>
 
       <div className="w-full flex items-center mb-6">
-        <h1 className="text-7xl font-bold mx-auto">Loja</h1>
+        <h1 className="text-4xl font-extrabold mx-auto">Loja</h1>
       </div>
 
       <div className="flex text-center mb-6">

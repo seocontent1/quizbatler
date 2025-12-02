@@ -59,7 +59,7 @@ useEffect(() => {
           ← Voltar
         </button>
 
-        <h1 className="text-3xl font-bold mb-16">Ranking Global</h1>
+        <h1 className="text-4xl font-extrabold mb-16">Ranking Global</h1>
       </div>
 
       {/* 🏆 PÓDIO SOBREPOSTO */}

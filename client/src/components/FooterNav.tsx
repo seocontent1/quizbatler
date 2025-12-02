@@ -1,4 +1,4 @@
-import { Home, ShoppingBag, Trophy, User } from "lucide-react";
+import { Home, ShoppingBag, Trophy, ListChecks, User } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 export default function FooterNav() {
@@ -8,6 +8,7 @@ export default function FooterNav() {
     { to: "/", label: "Início", icon: <Home size={22} /> },
     { to: "/store", label: "Loja", icon: <ShoppingBag size={22} /> },
     { to: "/ranking", label: "Ranking", icon: <Trophy size={22} /> },
+    { to: "/tasks", label: "Tarefas", icon: <ListChecks size={22} /> },
     { to: "/profile", label: "Perfil", icon: <User size={22} /> },
   ];
 
