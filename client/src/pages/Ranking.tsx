@@ -76,7 +76,11 @@ useEffect(() => {
               <div className="bg-gray-300 text-white w-10 h-10 flex items-center justify-center rounded-full mx-auto -mt-8 font-bold">
                 2
               </div>
-              <img src={top[1].avatar_url || "avatars/default.png"} className="w-14 h-14 rounded-full mx-auto" />
+              <img
+                src={user?.user_metadata?.avatar_url}
+                className="w-20 h-20 rounded-full border-4 border-white shadow-md"
+                alt="avatar"
+              />
               <p className="text-sm font-medium mt-2">{top[1].player_name}</p>
               <p className="text-purple-600 font-bold">{top[1].score}</p>
             </motion.div>

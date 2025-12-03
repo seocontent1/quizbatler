@@ -1,8 +1,12 @@
 import CharacterSprite from "./CharacterSprite";
 import LifeBar from "./LifeBar";
 import AttackEffect from "@/components/AttackEffect";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import RevealLightEffect from "@/components/RevealLightEffect";
+
+// 🚀 IMPORT DAS IMAGENS PARA PRELOAD
+import EFFECT_IMAGE from "/character_sprites/efect.svg";
+import POW_IMAGE from "/character_sprites/pow.svg";
 
 interface BattleArenaProps {
   showHolyBlast: boolean;
@@ -18,10 +22,8 @@ interface BattleArenaProps {
   setImpactParticles: React.Dispatch<React.SetStateAction<number>>;
   playerImgKey: number;
   showRevealEffect?: boolean;
-showRevealEffect: boolean;
-revealEffectData: { startX: number; startY: number } | null;
-setShowRevealEffect: (value: boolean) => void;
-
+  revealEffectData: { startX: number; startY: number } | null;
+  setShowRevealEffect: (value: boolean) => void;
 }
 
 export default function BattleArena({
@@ -38,6 +40,14 @@ export default function BattleArena({
   showHolyBlast,
   setShowHolyBlast,
 }: BattleArenaProps) {
+
+  // 🚀 PRELOAD DAS IMAGENS DE EFEITOS
+  useEffect(() => {
+    [EFFECT_IMAGE, POW_IMAGE].forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
   // === REFS ===
   const arenaRef = useRef<HTMLDivElement | null>(null);
@@ -62,9 +72,8 @@ export default function BattleArena({
     const eRect = enemyRef.current.getBoundingClientRect();
 
     // AJUSTE: Ponto de saída do poder (mão direita do personagem)
-    // Aumenta o offset X para sair da FRENTE (direita) do personagem
-    const startX = pRect.left - arenaRect.left + pRect.width * 0.35; // 0.75 = lado direito
-    const startY = pRect.top - arenaRect.top + pRect.height * 0.30;  // altura da mão
+    const startX = pRect.left - arenaRect.left + pRect.width * 0.35;
+    const startY = pRect.top - arenaRect.top + pRect.height * 0.30;
 
     const endX = eRect.left - arenaRect.left + eRect.width * 0.5;
     const deltaX = endX - startX;
@@ -95,7 +104,8 @@ export default function BattleArena({
         zIndex: 9999,
       }}
     >
-      <img src="/character_sprites/efect.png" className="w-full h-full" />
+      {/* 🚀 USANDO A IMAGEM IMPORTADA */}
+      <img src={EFFECT_IMAGE} className="w-full h-full" alt="effect" />
     </div>
   ));
 
@@ -105,14 +115,14 @@ export default function BattleArena({
       {/* RENDERIZA O ATAQUE AQUI, FORA DOS PERSONAGENS */}
       {holyBlastData && (
         <AttackEffect
-          image="/character_sprites/pow.png"
+          image={POW_IMAGE} // 🚀 USANDO A IMAGEM IMPORTADA
           startX={holyBlastData.startX}
           startY={holyBlastData.startY}
           distX={holyBlastData.distX}
           onFinish={() => {
-          setHolyBlastData(null);
-          setShowHolyBlast(false);
-          setImpactParticles(prev => prev + 1);
+            setHolyBlastData(null);
+            setShowHolyBlast(false);
+            setImpactParticles(prev => prev + 1);
           }}
         />
       )}

@@ -4,7 +4,7 @@ import { taskDefinitions } from "@/data/tasks";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import FooterNav from "@/components/FooterNav";
-import { Zap, Coins } from "lucide-react";
+import { Zap, Coins, Flame } from "lucide-react";
 
 export default function TasksPage() {
   const { user } = useAuth();
@@ -13,8 +13,9 @@ export default function TasksPage() {
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
   const [claimingMap, setClaimingMap] = useState<Record<string, boolean>>({});
   const [scorePoints, setScorePoints] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
 
-  // 🚀 CARREGAMENTO PARALELO - Sem loading state global
+  // 🚀 Carregamento do score
   useEffect(() => {
     if (!user) return;
 
@@ -22,11 +23,14 @@ export default function TasksPage() {
       try {
         const { data: scoreData } = await supabase
           .from("scores")
-          .select("score")
+          .select("score, best_streak")
           .eq("email", user.email)
-          .single();
+          .maybeSingle();
 
-        setScorePoints(scoreData?.score ?? 0);
+        if (!scoreData) return;
+
+        setScorePoints(scoreData.score ?? 0);
+        setBestStreak(scoreData.best_streak ?? 0);
       } catch (err) {
         console.error(err);
       }
@@ -35,6 +39,7 @@ export default function TasksPage() {
     loadScore();
   }, [user]);
 
+  // 🚀 Carregamento das task claims
   useEffect(() => {
     if (!user) return;
 
@@ -114,14 +119,27 @@ export default function TasksPage() {
 
       <div className="max-w-xl mx-auto space-y-4">
         {taskDefinitions.map((task) => {
-          const isCompleted = corrects >= task.required;
+          let isCompleted = false;
+          let progressValue = 0;
+          let progressText = "";
+
+          if (task.key === "perfect_10") {
+            isCompleted = bestStreak >= 10;
+            progressValue = Math.min(bestStreak, 10);
+            progressText = `${progressValue} / 10`;
+          } else {
+            isCompleted = corrects >= task.required;
+            progressValue = corrects;
+            progressText = `${corrects} / ${task.required}`;
+          }
+
           const isClaimed = claimed[task.key];
           const isClaiming = claimingMap[task.key];
 
-          const progressPercent = Math.min(
-            (corrects / task.required) * 100,
-            100
-          );
+          const progressPercent =
+            task.key === "perfect_10"
+              ? Math.min((bestStreak / 10) * 100, 100)
+              : Math.min((corrects / task.required) * 100, 100);
 
           return (
             <div
@@ -130,15 +148,24 @@ export default function TasksPage() {
             >
               {/* ⬅️ LADO ESQUERDO: Informações */}
               <div className="flex-1 space-y-2">
-                <h2 className="text-lg font-bold text-gray-900">
-                  {task.label}
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    {task.label}
+                  </h2>
+                  {task.key === "perfect_10" && (
+                    <Flame className="w-5 h-5 text-orange-500" />
+                  )}
+                </div>
 
                 <p className="text-sm text-gray-600">
-                  Acertos necessários:{" "}
-                  <span className="font-semibold text-gray-900">
-                    {task.required}
-                  </span>
+                  {task.key === "perfect_10"
+                    ? "Acerte 10 perguntas seguidas sem errar em uma partida"
+                    : `Acertos necessários: `}
+                  {task.key !== "perfect_10" && (
+                    <span className="font-semibold text-gray-900">
+                      {task.required}
+                    </span>
+                  )}
                 </p>
 
                 {/* Recompensas com ícones */}
@@ -154,7 +181,9 @@ export default function TasksPage() {
                   {task.rewardCoins > 0 && (
                     <div className="flex items-center gap-1 text-orange-500">
                       <Coins size={16} strokeWidth={2.5} />
-                      <span className="font-semibold">{task.rewardCoins} Moedas</span>
+                      <span className="font-semibold">
+                        {task.rewardCoins} Moedas
+                      </span>
                     </div>
                   )}
                 </div>
@@ -162,13 +191,16 @@ export default function TasksPage() {
                 {/* Barra de progresso */}
                 <div className="pt-1">
                   <p className="text-xs text-gray-600 font-medium mb-1">
-                    Progresso: <span className="font-bold">{corrects}</span> /{" "}
-                    {task.required}
+                    Progresso: <span className="font-bold">{progressText}</span>
                   </p>
 
                   <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
+                      className={`h-full transition-all duration-500 ${
+                        task.key === "perfect_10"
+                          ? "bg-gradient-to-r from-orange-500 to-red-500"
+                          : "bg-gradient-to-r from-blue-500 to-blue-600"
+                      }`}
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>

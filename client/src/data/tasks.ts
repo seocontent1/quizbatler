@@ -18,7 +18,7 @@ export const taskDefinitions = [
     label: "Acerte 200 perguntas",
     required: 200,
     rewardBoosters: 0,
-    rewardCoins: 1000,
+    rewardCoins: 200,
   },
   {
     key: "correct_300",
@@ -32,7 +32,7 @@ export const taskDefinitions = [
     label: "Acerte 400 perguntas",
     required: 400,
     rewardBoosters: 0,
-    rewardCoins: 2000,
+    rewardCoins: 400,
   },
   {
     key: "correct_1000",
@@ -45,23 +45,23 @@ export const taskDefinitions = [
     key: "correct_2000",
     label: "Acerte 2000 perguntas",
     required: 2000,
-    rewardBoosters: 4000,
+    rewardBoosters: 2000,
     rewardCoins: 0,
   },
   {
     key: "correct_3000",
     label: "Acerte 3000 perguntas",
     required: 3000,
-    rewardBoosters: 10000,
+    rewardBoosters: 3000,
     rewardCoins: 0,
   },
 
   // Desafio especial
-  {
-    key: "perfect_game",
-    label: "Acerte todas as perguntas sem errar",
-    required: 0,
-    rewardBoosters: 10,
-    rewardCoins: 1000,
-  },
+    {
+      key: "perfect_10",
+      label: "Acerte 10 perguntas seguidas no jogo",
+      streakRequired: 10,
+      rewardBoosters: 10,
+      rewardCoins: 1000,
+    },
 ];

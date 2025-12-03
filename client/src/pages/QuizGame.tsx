@@ -40,7 +40,7 @@ const TIME_PER_LEVEL = {
   super: 20,
 } as const;
 
-const COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12 horas
+const COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const STORAGE_KEY = "quiz_progress_v1";
 type AnswerRecord = { id: string; ts: number };
 type ProgressStore = { answered: AnswerRecord[] };
@@ -58,14 +58,11 @@ function loadProgress(): ProgressStore {
 function saveProgress(store: ProgressStore) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  } catch {
-    // ignore quota errors
-  }
+  } catch {}
 }
 
 function addAnswered(id: string) {
   const store = loadProgress();
-  // avoid duplicates: update timestamp if exists
   const exists = store.answered.find((a) => a.id === id);
   if (exists) {
     exists.ts = Date.now();
@@ -86,23 +83,17 @@ function answeredIds() {
   return loadProgress().answered.map((a) => a.id);
 }
 
-// filtered prepareQuestions that respects cooldown
 function prepareQuestionsFiltered(allQuestions: any[], difficulty?: string, amount?: number) {
-  // remove expired entries first
-
   const excluded = new Set(answeredIds());
   let pool = allQuestions.filter((q) => !excluded.has(q.id));
   if (difficulty) {
     pool = pool.filter((q) => q.difficulty === difficulty);
   }
-  // if pool empty, fallback to allQuestions (so game can continue)
   if (pool.length === 0) pool = allQuestions;
   const shuffled = shuffleArray(pool);
   const selected = typeof amount === "number" ? shuffled.slice(0, amount) : shuffled;
   return selected.map((q) => shuffleOptions(q));
 }
-
-// (mantive as funções shuffleArray, shuffleOptions, prepareQuestions exatamente como no seu arquivo)
 
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
@@ -150,21 +141,21 @@ export default function QuizGame() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const isBlocked = !user || guestMode;
   const [showHolyBlast, setShowHolyBlast] = useState(false);
-  // Moedas ganhas na partida atual
   const [sessionCoins, setSessionCoins] = useState(0);
-  // evita dar moedas mais de uma vez por partida
   const coinsAwardedRef = useRef(false);
-  // valor final ganho nesta partida (para exibir no modal)
   const [earnedThisMatch, setEarnedThisMatch] = useState(0);
-  // perto dos outros useState
   const [showRevealEffect, setShowRevealEffect] = useState(false);
   const [revealEffectData, setRevealEffectData] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // 🔥 NOVO: Rastreamento de streak na partida atual
+  const [currentMatchStreak, setCurrentMatchStreak] = useState(0);
+  const [bestMatchStreak, setBestMatchStreak] = useState(0);
+
   const openConfirmPopup = () => setShowConfirm(true);
   const cancelReturn = () => setShowConfirm(false);
-//spech
-  const [index, setIndex] = useState(0);
 
+  const [index, setIndex] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const questions = MOCK_QUESTIONS as Question[];
@@ -183,10 +174,10 @@ export default function QuizGame() {
     });
   }, []);
 
-    const confirmReturn = () => {
-      setShowConfirm(false);
-      handleReturnHome();
-    };
+  const confirmReturn = () => {
+    setShowConfirm(false);
+    handleReturnHome();
+  };
 
   const FREEZER_COST = 10;
   const REVEAL_COST = 3;
@@ -196,151 +187,120 @@ export default function QuizGame() {
     20: false,
     30: false,
   });
+
   const BOOST_COST: Record<number, number> = {
-  10: 1,
-  20: 2,
-  30: 3,
+    10: 1,
+    20: 2,
+    30: 3,
   };
+
   const useFreezer = async () => {
     if (usedFreezer || boostsLeft < 10) return;
-
-    // ✅ congela imediatamente
     setTimerPaused(true);
     setUsedFreezer(true);
-
-    // ✅ desconta do banco
     await supabase.rpc("decrement_boosters", {
       amount_to_subtract: 8,
     });
-
     setBoostsLeft(prev => prev - 8);
   };
-    const useReveal = async () => {
-      if (usedReveal || boostsLeft < REVEAL_COST) return;
 
-      // ✅ desconta booster
-      await supabase.rpc("decrement_boosters", {
-        amount_to_subtract: REVEAL_COST,
-      });
-
-      setBoostsLeft(prev => prev - REVEAL_COST);
-
-      // ✅ ativa revelação
-      setRevealAnswer(true);
-      setUsedReveal(true);
-
-      // ✅ animação do Jesus
-      setPlayerAnimation("reveal");
-      setPlayerImage(PLAYER_REV);
-      setShowRevealEffect(true);
-
-    // posição aproximada do player
+  const useReveal = async () => {
+    if (usedReveal || boostsLeft < REVEAL_COST) return;
+    await supabase.rpc("decrement_boosters", {
+      amount_to_subtract: REVEAL_COST,
+    });
+    setBoostsLeft(prev => prev - REVEAL_COST);
+    setRevealAnswer(true);
+    setUsedReveal(true);
+    setPlayerAnimation("reveal");
+    setPlayerImage(PLAYER_REV);
+    setShowRevealEffect(true);
     setRevealEffectData({
       startX: window.innerWidth / 2,
       startY: 200
     });
- };
+  };
 
-    async function refreshBoosters() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  async function refreshBoosters() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("user_inventory")
+      .select("boosters")
+      .eq("user_id", user.id)
+      .single();
+    if (data) setBoostsLeft(data.boosters);
+  }
 
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("user_inventory")
-        .select("boosters")
-        .eq("user_id", user.id)
-        .single();
-
-      if (data) setBoostsLeft(data.boosters);
+  async function consumeBooster(amount: number) {
+    const cost = BOOST_COST[amount];
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.rpc("decrement_boosters", {
+      amount_to_subtract: cost,
+    });
+    if (error) {
+      console.error("Erro ao descontar booster:", error);
+      return;
     }
-
-    async function consumeBooster(amount: number) {
-      const cost = BOOST_COST[amount];
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase.rpc("decrement_boosters", {
-        amount_to_subtract: cost,
-
-      });
-
-      if (error) {
-        console.error("Erro ao descontar booster:", error);
-        return;
-      }
-         await refreshBoosters();
-    }
+    await refreshBoosters();
+  }
 
   const addExtraTime = async (amount: number) => {
     const cost = BOOST_COST[amount];
-
     if (boostsLeft < cost || usedBoosts[amount]) return;
-
-   await consumeBooster(amount);
-
-    // ✅ dispara evento no Timer
+    await consumeBooster(amount);
     setExtraTimeAmount(amount);
     setExtraTimeEvent(prev => prev + 1);
-
-    // desativa botão usado
     setUsedBoosts(prev => ({
       ...prev,
       [amount]: true,
     }));
   };
-    useEffect(() => {
-      function handleTabChange() {
-        if (document.hidden) {
-          handleTimeout();
-        }
+
+  useEffect(() => {
+    function handleTabChange() {
+      if (document.hidden) {
+        handleTimeout();
       }
-      document.addEventListener("visibilitychange", handleTabChange);
-      return () => {
-        document.removeEventListener("visibilitychange", handleTabChange);
-      };
-    }, []);
+    }
+    document.addEventListener("visibilitychange", handleTabChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleTabChange);
+    };
+  }, []);
 
-    useEffect(() => {
-      const loadBoosters = async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+  useEffect(() => {
+    const loadBoosters = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("user_inventory")
+        .select("boosters")
+        .eq("user_id", user.id)
+        .single();
+      if (!error && data) {
+        setBoostsLeft(data.boosters);
+      }
+    };
+    loadBoosters();
+  }, []);
 
-        if (!user) return;
-
-        const { data, error } = await supabase
-          .from("user_inventory")
-          .select("boosters")
-          .eq("user_id", user.id)
-          .single();
-
-        if (!error && data) {
-          setBoostsLeft(data.boosters);
-        }
-      };
-
-      loadBoosters();
-}, []);
-
-  // KEY + control states
   const [playerImgKey, setPlayerImgKey] = useState(0);
   const [inputsDisabled, setInputsDisabled] = useState(false);
-
-  // timeout refs (use number | null for browser setTimeout)
   const attackTimeoutRef = useRef<number | null>(null);
   const recoveryTimeoutRef = useRef<number | null>(null);
 
-  // estados principais (preservando o que você já tinha)
   const [playerImage, setPlayerImage] = useState(PLAYER_IDLE);
   const [opponentImage, setOpponentImage] = useState(ENEMY_IDLE);
   const [gameState, setGameState] = useState<"start" | "playing" | "gameover">("start");
+
   useEffect(() => {
     if (gameState === "start") {
       setUsedBoosts({
@@ -350,9 +310,8 @@ export default function QuizGame() {
       });
     }
   }, [gameState]);
-  const [difficulty, setDifficulty] = useState<
-  "easy" | "medium" | "hard" | "super"
-  >("easy");
+
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "super">("easy");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [playerLife, setPlayerLife] = useState(100);
   const [opponentLife, setOpponentLife] = useState(100);
@@ -370,34 +329,26 @@ export default function QuizGame() {
   const [impactParticles, setImpactParticles] = useState(0);
   const [incorrectAnswers, setIncorrectAnswers] = useState(0);
   const [location] = useLocation();
-  // BENEFÍCIOS
-  const [timeBoosts, setTimeBoosts] = useState(1); // começa com 1 carga
-  const [freezeAvailable, setFreezeAvailable] = useState(1); // começa com 1 freezer
-
-  // controle do jogo
+  const [timeBoosts, setTimeBoosts] = useState(1);
+  const [freezeAvailable, setFreezeAvailable] = useState(1);
   const [extraTime, setExtraTime] = useState(0);
   const [isFrozen, setIsFrozen] = useState(false);
 
   const useTimeBoost = () => {
-  if (timeBoosts <= 0) return;
-  setTimeBoosts(prev => prev - 1);
-  // adiciona 10 segundos ao timer atual
-  setExtraTime(10);
-  // força o Timer recalcular o tempo
-  setTimeout(() => setTimerReset(false), 50);
+    if (timeBoosts <= 0) return;
+    setTimeBoosts(prev => prev - 1);
+    setExtraTime(10);
+    setTimeout(() => setTimerReset(false), 50);
   };
 
   const useFreeze = () => {
-  if (freezeAvailable <= 0 || isFrozen) return;
-
-  setFreezeAvailable(prev => prev - 1);
-  setIsFrozen(true);
-
-  // opcional: descongela depois de 6s
-  setTimeout(() => {
-    setIsFrozen(false);
-  }, 6000);
- };
+    if (freezeAvailable <= 0 || isFrozen) return;
+    setFreezeAvailable(prev => prev - 1);
+    setIsFrozen(true);
+    setTimeout(() => {
+      setIsFrozen(false);
+    }, 6000);
+  };
 
   useEffect(() => {
     if (impactParticles > 0) {
@@ -406,10 +357,8 @@ export default function QuizGame() {
     }
   }, [impactParticles]);
 
-  // ref para armazenar timeouts ativos e limpá-los ao retornar para home / desmontar
   const timeoutsRef = useRef<number[]>([]);
 
-  // guard: perguntas
   const QUESTIONS_PER_GAME = 1000;
   const [currentQuestions, setCurrentQuestions] = useState<any[]>(
     () => prepareQuestionsFiltered(MOCK_QUESTIONS, undefined, QUESTIONS_PER_GAME)
@@ -417,13 +366,11 @@ export default function QuizGame() {
   const currentQuestion = currentQuestions.length > 0 ? currentQuestions[currentQuestionIndex] : null;
   const progress = currentQuestions.length > 0 ? ((currentQuestionIndex + 1) / currentQuestions.length) * 100 : 0;
 
-  // ----------------- helpers de timeout -----------------
   const clearAllTimeouts = () => {
     timeoutsRef.current.forEach((id) => {
-      try { clearTimeout(id); } catch (e) { /* ignore */ }
+      try { clearTimeout(id); } catch (e) {}
     });
     timeoutsRef.current = [];
-    // também limpar refs controlados
     if (attackTimeoutRef.current) {
       clearTimeout(attackTimeoutRef.current);
       attackTimeoutRef.current = null;
@@ -433,8 +380,6 @@ export default function QuizGame() {
       recoveryTimeoutRef.current = null;
     }
   };
-
-  // ------------------- Funções do jogo -------------------
 
   const handleStart = (selectedDifficulty: "easy" | "medium" | "hard" | "super") => {
     setDifficulty(selectedDifficulty);
@@ -447,12 +392,13 @@ export default function QuizGame() {
     setQuestionStartTime(Date.now());
     setUsedFreezer(false);
 
+    // 🔥 RESETAR STREAKS AO INICIAR
+    setCurrentMatchStreak(0);
+    setBestMatchStreak(0);
   };
 
   const resetGame = () => {
-    // limpamos timeouts ao reset para evitar qualquer interferência
     clearAllTimeouts();
-
     setCurrentQuestionIndex(0);
     setScore(0);
     setCorrectAnswers(0);
@@ -468,6 +414,10 @@ export default function QuizGame() {
     setOpponentImage(ENEMY_IDLE);
     setExtraTimeEvent(0);
     setExtraTimeAmount(0);
+
+    // 🔥 RESETAR STREAKS
+    setCurrentMatchStreak(0);
+    setBestMatchStreak(0);
   };
 
   const handleRestart = () => {
@@ -502,9 +452,52 @@ export default function QuizGame() {
     setGameState("start");
   };
 
-  // -------------------- Resposta do jogador --------------------
+  // 🔥 FUNÇÃO PARA SALVAR BEST STREAK NO BANCO
+  const updateBestStreakInDB = async (streak: number) => {
+    if (!user || guestMode) {
+      console.log("⚠️ Usuário não logado ou modo guest - streak não salvo");
+      return;
+    }
 
-  // Trecho corrigido do handleAnswer - substitua a função completa
+    console.log(`🔍 Tentando salvar streak: ${streak} para email: ${user.email}`);
+
+    try {
+      // Busca o best_streak atual do usuário
+      const { data: currentData, error: fetchError } = await supabase
+        .from("scores")
+        .select("best_streak")
+        .eq("email", user.email)
+        .single();
+
+      if (fetchError) {
+        console.error("❌ Erro ao buscar best_streak:", fetchError);
+        return;
+      }
+
+      const currentBest = currentData?.best_streak || 0;
+      console.log(`📊 Best streak atual no banco: ${currentBest}`);
+
+      // Só atualiza se o novo streak for maior
+      if (streak > currentBest) {
+        const { data: updateData, error: updateError } = await supabase
+          .from("scores")
+          .update({ best_streak: streak })
+          .eq("email", user.email)
+          .select();
+
+        if (updateError) {
+          console.error("❌ Erro ao atualizar best_streak:", updateError);
+        } else {
+          console.log(`✅ Best streak atualizado de ${currentBest} para ${streak}`);
+          console.log("📦 Dados atualizados:", updateData);
+        }
+      } else {
+        console.log(`ℹ️ Streak ${streak} não é maior que ${currentBest} - não atualizado`);
+      }
+    } catch (error) {
+      console.error("❌ Erro geral ao atualizar best_streak:", error);
+    }
+  };
 
   const handleAnswer = async (answerIndex: number) => {
     if (!currentQuestion) return;
@@ -514,7 +507,6 @@ export default function QuizGame() {
     setTimerPaused(false);
     setSelectedAnswer(answerIndex);
     const isCorrect = answerIndex === currentQuestion.correctAnswer;
-    setSelectedAnswer(answerIndex);
 
     const timeTaken = (Date.now() - questionStartTime) / 1000;
 
@@ -522,17 +514,24 @@ export default function QuizGame() {
       setAnswerState("correct");
       setCorrectAnswers(prev => prev + 1);
       setSessionCoins(prev => prev + 3);
-      // ✅ SEQUÊNCIA CORRIGIDA - Player ataca
+
+      // 🔥 INCREMENTAR STREAK DA PARTIDA
+      const newStreak = currentMatchStreak + 1;
+      setCurrentMatchStreak(newStreak);
+
+      // 🔥 ATUALIZAR MELHOR STREAK DA PARTIDA
+      if (newStreak > bestMatchStreak) {
+        setBestMatchStreak(newStreak);
+      }
+
       setPlayerAnimation("attack");
       setPlayerImage(PLAYER_ATK);
       setShowHolyBlast(true);
 
-      // ✅ Oponente leva hit após 600ms
       const hitTimeout = window.setTimeout(() => {
         setOpponentAnimation("hit");
         setOpponentImage(ENEMY_HIT);
 
-        // Calcula e aplica o dano
         let damage = 5;
         if (timeTaken < 5) damage = 10;
         else if (timeTaken >= 3 && timeTaken < 6) damage = 6;
@@ -543,7 +542,6 @@ export default function QuizGame() {
       }, 600);
       timeoutsRef.current.push(hitTimeout);
 
-      // ✅ Volta ao idle após 1000ms (dá tempo do hit terminar)
       const idleTimeout = window.setTimeout(() => {
         setPlayerAnimation("idle");
         setPlayerImage(PLAYER_IDLE);
@@ -557,22 +555,27 @@ export default function QuizGame() {
       setQuestionVisible(false);
 
     } else {
-      // ✅ RESPOSTA INCORRETA - Oponente ataca
+      // 🔥 ERROU: QUEBRA A STREAK
       setAnswerState("incorrect");
       setCurrentStreak((prev) => prev + 1);
       setIncorrectAnswers(prev => prev + 1);
 
-      // ✅ Oponente começa a atacar imediatamente
+      // 🔥 SALVAR BEST STREAK ANTES DE RESETAR
+      if (currentMatchStreak > 0) {
+        await updateBestStreakInDB(currentMatchStreak);
+      }
+
+      // 🔥 RESETAR STREAK DA PARTIDA
+      setCurrentMatchStreak(0);
+
       setOpponentAnimation("attack");
       setOpponentImage(ENEMY_ATK);
 
-      // ✅ Player leva hit após 400ms
       const playerHitTimeout = window.setTimeout(() => {
         setPlayerAnimation("hit");
       }, 400);
       timeoutsRef.current.push(playerHitTimeout);
 
-      // ✅ Aplica dano e volta ao idle após 800ms
       const damageTimeout = window.setTimeout(() => {
         setPlayerLife((prev) => Math.max(0, prev - 10));
         setPlayerAnimation("idle");
@@ -582,7 +585,6 @@ export default function QuizGame() {
       timeoutsRef.current.push(damageTimeout);
     }
 
-    // ✅ Avança para próxima pergunta (espera as animações terminarem)
     const tAdvance = window.setTimeout(() => {
       setCurrentQuestionIndex((prev) =>
         currentQuestions.length > 0 ? (prev + 1) % currentQuestions.length : prev
@@ -606,11 +608,10 @@ export default function QuizGame() {
       });
 
       setQuestionStartTime(Date.now());
-    }, 500); // Aumentei para 1500ms para dar tempo das animações
+    }, 500);
     timeoutsRef.current.push(tAdvance);
   };
 
-  // ✅ TIMEOUT CORRIGIDO TAMBÉM
   const handleTimeout = () => {
     if (!currentQuestion) return;
     setPlayerAnimation("idle");
@@ -622,20 +623,23 @@ export default function QuizGame() {
     setAnswerState("incorrect");
     setIncorrectAnswers(prev => prev + 1);
 
-    // ✅ Oponente ataca após 200ms
+    // 🔥 TIMEOUT TAMBÉM QUEBRA A STREAK
+    if (currentMatchStreak > 0) {
+      updateBestStreakInDB(currentMatchStreak);
+    }
+    setCurrentMatchStreak(0);
+
     const attackTimeout = window.setTimeout(() => {
       setOpponentAnimation("attack");
       setOpponentImage(ENEMY_ATK);
     }, 200);
     timeoutsRef.current.push(attackTimeout);
 
-    // ✅ Player leva hit após 400ms
     const hitTimeout = window.setTimeout(() => {
       setPlayerAnimation("hit");
     }, 400);
     timeoutsRef.current.push(hitTimeout);
 
-    // ✅ Aplica dano e volta ao idle após 800ms
     const damageTimeout = window.setTimeout(() => {
       setPlayerLife((prev) => Math.max(0, prev - 10));
       setPlayerAnimation("idle");
@@ -644,7 +648,6 @@ export default function QuizGame() {
     }, 800);
     timeoutsRef.current.push(damageTimeout);
 
-    // ✅ Avança para próxima pergunta
     const tAdvance2 = window.setTimeout(() => {
       setCurrentQuestionIndex((prev) =>
         currentQuestions.length > 0 ? (prev + 1) % currentQuestions.length : prev
@@ -657,28 +660,38 @@ export default function QuizGame() {
         setTimerPaused(false);
       });
       setQuestionStartTime(Date.now());
-    }, 500); // Aumentei de 1800ms para 1500ms
+    }, 500);
     timeoutsRef.current.push(tAdvance2);
   };
 
-    const addCoinsToUser = async (amount: number) => {
-      try {
-        await supabase.rpc("add_coins_to_inventory", {
-          amount_to_add: amount
-        });
-      } catch (error) {
-        console.error("Erro ao adicionar moedas:", error);
-      }
-    };
+  const addCoinsToUser = async (amount: number) => {
+    try {
+      await supabase.rpc("add_coins_to_inventory", {
+        amount_to_add: amount
+      });
+    } catch (error) {
+      console.error("Erro ao adicionar moedas:", error);
+    }
+  };
 
   useEffect(() => {
     const handleGameoverCoins = async () => {
       if (coinsAwardedRef.current) return;
-
       if (playerLife > 0 && opponentLife > 0) return;
 
       coinsAwardedRef.current = true;
       setGameState("gameover");
+
+      // 🔥 SALVAR BEST STREAK NO FINAL DA PARTIDA
+      const finalBest = Math.max(currentMatchStreak, bestMatchStreak);
+      console.log(`🎯 Final da partida - currentMatchStreak: ${currentMatchStreak}, bestMatchStreak: ${bestMatchStreak}, finalBest: ${finalBest}`);
+
+      if (finalBest > 0) {
+        console.log(`💾 Salvando best streak: ${finalBest}`);
+        await updateBestStreakInDB(finalBest);
+      } else {
+        console.log("⚠️ Nenhuma streak para salvar (finalBest = 0)");
+      }
 
       if (!guestMode && user) {
         submitScore(score);
@@ -692,10 +705,10 @@ export default function QuizGame() {
 
       if (!guestMode && user && totalEarned > 0) {
         try {
-           const { data, error } = await supabase.rpc("add_coins_to_inventory", {
-             p_amount: totalEarned,
-             p_user_id: user.id,
-           });
+          const { data, error } = await supabase.rpc("add_coins_to_inventory", {
+            p_amount: totalEarned,
+            p_user_id: user.id,
+          });
 
           if (error) {
             console.error("Erro RPC add_coins_to_inventory:", error);
@@ -711,7 +724,6 @@ export default function QuizGame() {
     };
 
     handleGameoverCoins();
-
     setShowConfirm(false);
   }, [playerLife, opponentLife]);
 
@@ -720,8 +732,6 @@ export default function QuizGame() {
       clearAllTimeouts();
     };
   }, []);
-
-  // -------------------- Render --------------------
 
   if (gameState === "start") {
     return <StartScreen onStart={handleStart} boostsLeft={boostsLeft} />;
@@ -738,23 +748,30 @@ export default function QuizGame() {
   return (
     <div className="min-h-screen p-1 bg-gradient-to-b from-background via-background to-muted/10">
       <div className="max-w-6xl mx-auto p-1 sm:p-2">
-      <div className="max-w-3xl mx-auto space-y-3">
-        <ScoreDisplay
-          correctAnswers={correctAnswers}
-          currentStreak={currentStreak}
-          totalScore={score}
-          boostsLeft={boostsLeft}
-        />
+        <div className="max-w-3xl mx-auto space-y-3">
+          <ScoreDisplay
+            correctAnswers={correctAnswers}
+            currentStreak={currentStreak}
+            totalScore={score}
+            boostsLeft={boostsLeft}
+          />
 
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={openConfirmPopup}
-            className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm"
-            data-testid="btn-return-home"
-          >
-            Voltar ao início
-          </button>
-        </div>
+          {/* 🔥 EXIBIR STREAK ATUAL DA PARTIDA - SÓ A PARTIR DE 6 */}
+          {currentMatchStreak >= 6 && (
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-lg text-center font-bold shadow-lg animate-pulse">
+              🔥 Sequência Perfeita: {currentMatchStreak} acertos consecutivos!
+            </div>
+          )}
+
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={openConfirmPopup}
+              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm"
+              data-testid="btn-return-home"
+            >
+              Voltar ao início
+            </button>
+          </div>
 
           <Progress value={progress} className="mb-8 h-4" data-testid="progress-quiz" />
           <BattleArena
@@ -784,104 +801,101 @@ export default function QuizGame() {
             />
           </div>
 
-            <Timer
-              duration={TIME_PER_LEVEL[difficulty]}
-              extraTimeEvent={extraTimeEvent}
-              extraTimeAmount={extraTimeAmount}
-              onTimeout={handleTimeout}
-              isPaused={timerPaused || isFrozen}
-              reset={timerReset}
-            />
+          <Timer
+            duration={TIME_PER_LEVEL[difficulty]}
+            extraTimeEvent={extraTimeEvent}
+            extraTimeAmount={extraTimeAmount}
+            onTimeout={handleTimeout}
+            isPaused={timerPaused || isFrozen}
+            reset={timerReset}
+          />
 
-            {/* ✅ Se tiver booster, mostra benefícios */}
-            {boostsLeft > 0 ? (
-              <div className="flex flex-wrap gap-3 justify-center w-full">
-
-                <button
-                  onClick={() => {
-                    const cost = BOOST_COST[10];
-                    if (boostsLeft < cost) return;
-                    addExtraTime(10);
-                  }}
-                  disabled={boostsLeft < BOOST_COST[10] || usedBoosts[10]}
-                  className="px-1 py-1 bg-yellow-500 !border-none text-white rounded disabled:opacity-40"
-                >
+          {boostsLeft > 0 ? (
+            <div className="flex flex-wrap gap-3 justify-center w-full">
+              <button
+                onClick={() => {
+                  const cost = BOOST_COST[10];
+                  if (boostsLeft < cost) return;
+                  addExtraTime(10);
+                }}
+                disabled={boostsLeft < BOOST_COST[10] || usedBoosts[10]}
+                className="px-1 py-1 bg-yellow-500 !border-none text-white rounded disabled:opacity-40"
+              >
                 <div className="flex items-center gap-1 w-full min-w-0">
-                 <ClockPlus className="w-3 h-3 text-white-500" />
-                  10s ⚡1</div>
-                </button>
+                  <ClockPlus className="w-3 h-3 text-white-500" />
+                  10s ⚡1
+                </div>
+              </button>
 
-                <button
-                  onClick={() => {
-                    const cost = BOOST_COST[20];
-                    if (boostsLeft < cost) return;
-                    addExtraTime(20);
-                  }}
-                  disabled={boostsLeft < BOOST_COST[20] || usedBoosts[20]}
-                  className="px-1 py-1 bg-orange-500 !border-none text-white rounded disabled:opacity-40"
-                >
+              <button
+                onClick={() => {
+                  const cost = BOOST_COST[20];
+                  if (boostsLeft < cost) return;
+                  addExtraTime(20);
+                }}
+                disabled={boostsLeft < BOOST_COST[20] || usedBoosts[20]}
+                className="px-1 py-1 bg-orange-500 !border-none text-white rounded disabled:opacity-40"
+              >
                 <div className="flex items-center gap-1 w-full min-w-0">
-                 <ClockPlus className="w-3 h-3 text-white-500" />
+                  <ClockPlus className="w-3 h-3 text-white-500" />
                   20s ⚡2
-                  </div>
-                </button>
+                </div>
+              </button>
 
-                <button
-                  onClick={() => {
-                    const cost = BOOST_COST[30];
-                    if (boostsLeft < cost) return;
-                    addExtraTime(30);
-                  }}
-                  disabled={boostsLeft < BOOST_COST[30] || usedBoosts[30]}
-                  className="px-1 py-1 bg-red-500 text-white !border-none rounded disabled:opacity-40"
-                >
+              <button
+                onClick={() => {
+                  const cost = BOOST_COST[30];
+                  if (boostsLeft < cost) return;
+                  addExtraTime(30);
+                }}
+                disabled={boostsLeft < BOOST_COST[30] || usedBoosts[30]}
+                className="px-1 py-1 bg-red-500 text-white !border-none rounded disabled:opacity-40"
+              >
                 <div className="flex items-center gap-1 w-full min-w-0">
-                <ClockPlus className="w-3 h-3 text-white-500" />
+                  <ClockPlus className="w-3 h-3 text-white-500" />
                   30s ⚡3
-                  </div>
-                </button>
+                </div>
+              </button>
 
-                <Button
-                  onClick={useFreezer}
-                  disabled={usedFreezer || boostsLeft < 8 || selectedAnswer !== null}
-                  className="px-1 py-1 bg-blue-500 text-white !border-none rounded disabled:opacity-40"
-                >
+              <Button
+                onClick={useFreezer}
+                disabled={usedFreezer || boostsLeft < 8 || selectedAnswer !== null}
+                className="px-1 py-1 bg-blue-500 text-white !border-none rounded disabled:opacity-40"
+              >
                 <div className="flex items-center gap-1 w-full min-w-0">
                   ❄️Freeze ⚡8
-                  </div>
-                </Button>
+                </div>
+              </Button>
 
-                <Button
-                  onClick={useReveal}
-                  disabled={usedReveal || boostsLeft < REVEAL_COST || selectedAnswer !== null}
-                  className="px-3 py-2 bg-[#42e521] text-white !border-none rounded disabled:opacity-40"
-                >
+              <Button
+                onClick={useReveal}
+                disabled={usedReveal || boostsLeft < REVEAL_COST || selectedAnswer !== null}
+                className="px-3 py-2 bg-[#42e521] text-white !border-none rounded disabled:opacity-40"
+              >
                 <div className="flex items-center gap-1 w-full min-w-0">
-                <Eye className="w-3 h-3 text-white-500" />
+                  <Eye className="w-3 h-3 text-white-500" />
                   Revelação ⚡10
-                  </div>
-                </Button>
-
-              </div>
-            ) : (
-              /* ✅ Caso não tenha booster, mostrar compra */
-              <div className="justify-center w-full mt-4">
-               {isBlocked ? (
-                 <button
-                   onClick={() => setShowLoginModal(true)}
-                   className="px-4 py-3 bg-[#ffbc42] w-full rounded-md font-semibold text-black"
-                 >
+                </div>
+              </Button>
+            </div>
+          ) : (
+            <div className="justify-center w-full mt-4">
+              {isBlocked ? (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="px-4 py-3 bg-[#ffbc42] w-full rounded-md font-semibold text-black"
+                >
                   Comprar Booster
-                 </button>
-               ) : (
-                 <Link href="/store">
-                   <button className="px-4 py-3 bg-[#ffbc42] w-full rounded-md font-semibold text-black">
-                     Comprar Booster
-                   </button>
-                 </Link>
-               )}
-              </div>
-            )}
+                </button>
+              ) : (
+                <Link href="/store">
+                  <button className="px-4 py-3 bg-[#ffbc42] w-full rounded-md font-semibold text-black">
+                    Comprar Booster
+                  </button>
+                </Link>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {currentQuestion.options.map((option: string, index: number) => (
@@ -890,14 +904,14 @@ export default function QuizGame() {
                 text={option}
                 onClick={() => handleAnswer(index)}
                 state={
-                    revealAnswer && index === currentQuestion.correctAnswer
-                      ? "correct"
-                      : selectedAnswer === null
-                      ? "default"
-                      : selectedAnswer === index
-                      ? answerState
-                      : "default"
-                  }
+                  revealAnswer && index === currentQuestion.correctAnswer
+                    ? "correct"
+                    : selectedAnswer === null
+                    ? "default"
+                    : selectedAnswer === index
+                    ? answerState
+                    : "default"
+                }
                 disabled={selectedAnswer !== null || inputsDisabled}
                 index={index}
               />
@@ -905,19 +919,19 @@ export default function QuizGame() {
           </div>
         </div>
       </div>
-{showConfirm && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-    <div className="bg-white p-8 rounded-xl shadow-xl w-xs text-center">
-      <h2 className="text-lg font-bold mb-3">Sair do jogo?</h2>
-      <p className="mb-4">Você perderá todo o progresso do jogo!</p>
 
-      <div className="flex gap-3 justify-center">
-        <button onClick={cancelReturn} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
-        <button onClick={confirmReturn} className="px-4 py-2 bg-red-500 text-white rounded-lg">Sair</button>
-      </div>
-    </div>
-  </div>
-)}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-8 rounded-xl shadow-xl w-xs text-center">
+            <h2 className="text-lg font-bold mb-3">Sair do jogo?</h2>
+            <p className="mb-4">Você perderá todo o progresso do jogo!</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={cancelReturn} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+              <button onClick={confirmReturn} className="px-4 py-2 bg-red-500 text-white rounded-lg">Sair</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <GameOverModal
         isOpen={gameState === "gameover"}
@@ -929,39 +943,41 @@ export default function QuizGame() {
         onClose={handleClose}
         earnedCoins={earnedThisMatch}
       />
+
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
-    <DialogContent className="text-center max-w-sm">
-      <DialogHeader className="text-left">
-        <DialogTitle>Faça login para continuar</DialogTitle>
-        <span className="text-sm text-muted-foreground">
-          Você precisa estar logado para percorrer uma jornada global.
-        </span>
-      </DialogHeader>
-
-      <Button
-        onClick={async () => {
-          await loginWithGoogle();
-          setShowLoginModal(false);
-        }}
-        className="w-full bg-blue-600 text-md text-white border-none"
-      >
-        Entrar com Google
-      </Button>
-      <span className="text-md text-muted-foreground">Participa de partidas Rankeadas, Rank global e pode comprar recursos!</span>
-      <Button
-        onClick={() => {
-          localStorage.setItem("guestMode", "true");
-          setGuestMode(true);
-          setShowLoginModal(false);
-        }}
-        className="w-full bg-[#b3dee2] text-md border-none"
-      >
-        Jogar como Convidado
-      </Button>
-      <span className="text-md text-muted-foreground">Não participa de partidas Rankeadas, nem Rank global e nem pode comprar recursos!</span>
-    </DialogContent>
-  </Dialog>
-
-</div>
+        <DialogContent className="text-center max-w-sm">
+          <DialogHeader className="text-left">
+            <DialogTitle>Faça login para continuar</DialogTitle>
+            <span className="text-sm text-muted-foreground">
+              Você precisa estar logado para percorrer uma jornada global.
+            </span>
+          </DialogHeader>
+          <Button
+            onClick={async () => {
+              await loginWithGoogle();
+              setShowLoginModal(false);
+            }}
+            className="w-full bg-blue-600 text-md text-white border-none"
+          >
+            Entrar com Google
+          </Button>
+          <span className="text-md text-muted-foreground">
+            Participa de partidas Rankeadas, Rank global e pode comprar recursos!
+          </span>
+          <Button
+            onClick={() => {
+              localStorage.setItem("guestMode", "true");
+              setShowLoginModal(false);
+            }}
+            className="w-full bg-[#b3dee2] text-md border-none"
+          >
+            Jogar como Convidado
+          </Button>
+          <span className="text-md text-muted-foreground">
+            Não participa de partidas Rankeadas, nem Rank global e nem pode comprar recursos!
+          </span>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

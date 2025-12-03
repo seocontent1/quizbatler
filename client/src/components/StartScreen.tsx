@@ -182,7 +182,7 @@ function canPlayLevel(level: "easy" | "medium" | "hard" | "super") {
               <StarHalf className="w-6 h-6 text-primary" />
 
               <div className="flex-1 text-left leading-tight">
-                <div className="font-semibold">Nível Fácil</div>
+                <div className="font-semibold">Nível Leitor</div>
 
                 <div className="text-black">
                   {!user
@@ -224,10 +224,10 @@ function canPlayLevel(level: "easy" | "medium" | "hard" | "super") {
                 "shadow-[0_6px_0_0_rgba(0,0,0,1)] md:shadow-[0_8px_0_0_rgba(0,0,0,1)]"
               )}
             >
-              <StarHalf className="w-6 h-6 text-primary" />
+              <Zap className="w-6 h-6 text-primary" />
 
               <div className="flex-1 text-left leading-tight">
-                <div className="font-semibold">Nível Médio</div>
+                <div className="font-semibold">Nível Estudante</div>
 
                 <div className="text-black">
                   {!user
@@ -272,17 +272,17 @@ function canPlayLevel(level: "easy" | "medium" | "hard" | "super") {
                 "shadow-[0_6px_0_0_rgba(0,0,0,1)] md:shadow-[0_8px_0_0_rgba(0,0,0,1)]"
               )}
             >
-              <StarHalf className="w-6 h-6 text-primary" />
+              <Swords className="w-6 h-6 text-primary" />
 
               <div className="flex-1 text-left leading-tight">
-                <div className="font-semibold">Nível Difícil</div>
+                <div className="font-semibold">Nível Teólogo</div>
 
                 <div className="text-black">
                   {!user
                     ? "Faça login para jogar"
                     : score < LEVEL_REQUIREMENTS.hard
                       ? `Precisa de ${LEVEL_REQUIREMENTS.hard} pontos`
-                      : "Nível Teólogo"}
+                      : "Alto conhecimento bíblico"}
                 </div>
               </div>
                   {/* ÍCONE DIREITA — SOMENTE SE BLOQUEADO */}
@@ -320,7 +320,7 @@ function canPlayLevel(level: "easy" | "medium" | "hard" | "super") {
                 "shadow-[0_6px_0_0_rgba(0,0,0,1)] md:shadow-[0_8px_0_0_rgba(0,0,0,1)]"
               )}
             >
-              <StarHalf className="w-6 h-6 text-primary" />
+              <Shield className="w-6 h-6 text-primary" />
 
               <div className="flex-1 text-left leading-tight">
                 <div className="font-semibold">Nível Exegeta</div>
