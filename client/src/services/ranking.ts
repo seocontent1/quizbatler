@@ -1,16 +1,16 @@
 import { supabase } from "@/lib/supabase";
 
 export async function submitScore(score: number) {
-
   const { data: session } = await supabase.auth.getSession();
-  const email = session?.session?.user?.email;
+  const user = session?.session?.user;
+  const email = user?.email;
 
-  if (!email) {
+  if (!email || !user) {
     console.error("Usuário não logado!");
     return false;
   }
 
-  // Buscar registro existente sem gerar erro
+  // Buscar registro existente
   const { data: existing, error: selectError } = await supabase
     .from("scores")
     .select("*")
@@ -18,23 +18,22 @@ export async function submitScore(score: number) {
     .maybeSingle();
 
   if (selectError) {
-    console.error("Erro ao buscar score existente:", selectError);
+    console.error("Erro ao buscar score:", selectError);
   }
 
-  // Se já existe, atualizar somando
+  // Se já existe, atualizar
   if (existing) {
     const total = existing.score + score;
 
     const { error: updateError } = await supabase
       .from("scores")
-      .update({ score: total })
+      .update({
+          score: total,
+          user_id: user.id // <--- GARANTIR QUE ATUALIZA O ID TAMBÉM
+      })
       .eq("email", email);
 
-    if (updateError) {
-      console.error("Erro ao atualizar score:", updateError);
-      return false;
-    }
-
+    if (updateError) return false;
     return true;
   }
 
@@ -42,8 +41,9 @@ export async function submitScore(score: number) {
   const { error: insertError } = await supabase
     .from("scores")
     .insert({
+      user_id: user.id, // <--- ADICIONE ESTA LINHA OBRIGATÓRIA
       email,
-      player_name: session.session.user.user_metadata.full_name,
+      player_name: user.user_metadata.full_name || "Jogador",
       score,
     });
 
@@ -55,7 +55,6 @@ export async function submitScore(score: number) {
   return true;
 }
 
-// Ranking global
 export async function getRanking(limit: number = 50) {
   const { data, error } = await supabase
     .from("scores")
@@ -67,6 +66,5 @@ export async function getRanking(limit: number = 50) {
     console.error("Erro ao buscar ranking:", error);
     return [];
   }
-
   return data;
 }

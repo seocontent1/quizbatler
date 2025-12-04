@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { taskDefinitions } from "@/data/tasks";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import FooterNav from "@/components/FooterNav";
-import { Zap, Coins, Flame } from "lucide-react";
+import { Zap, Coins, Flame, ListTodo } from "lucide-react";
 
 export default function TasksPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
   const [claimingMap, setClaimingMap] = useState<Record<string, boolean>>({});
   const [scorePoints, setScorePoints] = useState(0);
@@ -112,12 +112,27 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-[#003997] to-blue-500 p-4 pb-24">
-      <h1 className="text-4xl font-extrabold text-white text-center mb-6">
-        Tarefas
-      </h1>
+    <div className="min-h-screen bg-[#f5f6fa] pb-28 relative font-sans">
 
-      <div className="max-w-xl mx-auto space-y-4">
+          {/* 🔵 HEADER CURVADO (Igual ao Ranking) */}
+       <div className="bg-gradient-to-b from-[#003997] to-blue-500 h-[280px] w-full rounded-b-[40px] flex flex-col items-center pt-8 text-white relative z-0 shadow-lg">
+
+            {/* Botão Voltar Absoluto */}
+            <button
+                      onClick={() => window.history.back()}
+                      className="absolute left-4 top-4 text-white text-sm opacity-80"
+                    >
+                      ← Voltar
+            </button>
+
+            <div className="mt-6 flex flex-col items-center">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3 backdrop-blur-sm">
+                    <ListTodo size={24} className="text-white" />
+                </div>
+                <h1 className="text-3xl font-extrabold tracking-tight">Tarefas</h1>
+            </div>
+       </div>
+      <div className="max-w-xl mx-auto pt-8 space-y-4">
         {taskDefinitions.map((task) => {
           let isCompleted = false;
           let progressValue = 0;

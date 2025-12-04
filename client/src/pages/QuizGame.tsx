@@ -179,8 +179,8 @@ export default function QuizGame() {
     handleReturnHome();
   };
 
-  const FREEZER_COST = 10;
-  const REVEAL_COST = 3;
+  const FREEZER_COST = 8;
+  const REVEAL_COST = 10;
 
   const [usedBoosts, setUsedBoosts] = useState({
     10: false,
@@ -195,7 +195,7 @@ export default function QuizGame() {
   };
 
   const useFreezer = async () => {
-    if (usedFreezer || boostsLeft < 10) return;
+    if (usedFreezer || boostsLeft < 8) return;
     setTimerPaused(true);
     setUsedFreezer(true);
     await supabase.rpc("decrement_boosters", {
@@ -430,6 +430,11 @@ export default function QuizGame() {
     resetGame();
     const prepared = prepareQuestionsFiltered(MOCK_QUESTIONS, difficulty, QUESTIONS_PER_GAME);
     setCurrentQuestions(prepared);
+    setRevealAnswer(false);
+    setUsedReveal(false);
+    setShowRevealEffect(false);
+    setRevealEffectData(null);
+
   };
 
   const handleClose = () => {
@@ -439,6 +444,10 @@ export default function QuizGame() {
     setGameState("start");
     setPlayerLife(100);
     setOpponentLife(100);
+    setRevealAnswer(false);
+    setUsedReveal(false);
+    setShowRevealEffect(false);
+    setRevealEffectData(null);
   };
 
   const handleReturnHome = () => {
@@ -450,6 +459,10 @@ export default function QuizGame() {
     setPlayerLife(100);
     setOpponentLife(100);
     setGameState("start");
+    setRevealAnswer(false);
+    setUsedReveal(false);
+    setShowRevealEffect(false);
+    setRevealEffectData(null);
   };
 
   // 🔥 FUNÇÃO PARA SALVAR BEST STREAK NO BANCO

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Coins, Swords, Award, Lock, Zap } from "lucide-react";
+import { Coins, Swords, Award, Lock, Zap, Users, ArrowLeft } from "lucide-react";
 import FooterNav from "@/components/FooterNav";
 import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 
 // Titles progression with badge paths
 const TITLES = [
@@ -129,107 +130,131 @@ export default function ProfilePage() {
     checkLevelUp();
   }, [user, loadingScore, title]);
 
-  // ✨ RENDERIZAÇÃO IMEDIATA - sem loading state global
+  // ✨ LAYOUT RESPONSIVO E COM SCROLL CORRETO
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#003997] to-blue-500 p-6 pb-20 flex justify-center">
-      <div className="w-full max-w-xl space-y-6">
+    <div className="min-h-screen bg-[#f5f6fa] relative pb-20 font-sans">
 
-        {/* header */}
-        <div className="text-center text-white space-y-1 drop-shadow-sm">
-          <h1 className="text-4xl font-extrabold">Meu Perfil</h1>
-          <p className="text-md opacity-90">Sua caminhada de estudos bíblicos</p>
+      {/* HEADER AZUL FIXO NO TOPO */}
+      <div className="bg-gradient-to-b from-[#003997] to-blue-500 h-[380px] w-full rounded-b-[40px] flex flex-col items-center pt-8 text-white relative z-0 shadow-xl px-4">
 
-          <div className="mt-3 flex justify-center">
-            <img
-              src={user?.user_metadata?.avatar_url}
-              className="w-20 h-20 rounded-full border-4 border-white shadow-md"
-              alt="avatar"
-            />
-          </div>
+        <button
+          onClick={() => window.history.back()}
+          className="absolute left-4 top-6 text-white/80 hover:text-white flex items-center gap-1 text-sm font-medium transition-colors hover:bg-white/10 px-3 py-1 rounded-full"
+        >
+          <ArrowLeft size={18} /> Voltar
+        </button>
 
-          <p className="mt-2 text-white font-semibold">{user?.user_metadata?.full_name || "Usuário"}</p>
+        <div className="text-center space-y-2 mt-2">
+            <div className="w-12 h-12 bg-white/20 rounded-full inline-flex items-center justify-center backdrop-blur-md mb-2">
+              <Users size={24} className="text-white" />
+            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight">Meu Perfil</h1>
+            <p className="text-blue-100 text-sm opacity-90">Sua caminhada de estudos bíblicos</p>
+
+            <div className="mt-4 flex flex-col items-center">
+                <div className="p-1 bg-white/20 rounded-full">
+                    <img
+                    src={user?.user_metadata?.avatar_url}
+                    className="w-24 h-24 rounded-full border-4 border-white shadow-2xl object-cover"
+                    alt="avatar"
+                    />
+                </div>
+                <p className="mt-3 text-xl font-bold text-white tracking-wide drop-shadow-md">
+                    {user?.user_metadata?.full_name || "Usuário"}
+                </p>
+            </div>
         </div>
+      </div>
+
+      {/* CONTEÚDO PRINCIPAL (Flutuando sobre o header) */}
+      <div className="px-4 -mt-10 relative z-10 max-w-xl mx-auto space-y-6">
 
         {/* title card */}
-        <div className="bg-white rounded-2xl shadow-md border border-black/10 p-5">
-          <div className="flex items-center gap-3">
-            <img src={title.badge} alt="badge" className="w-16 h-16 rounded-lg drop-shadow-lg" />
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-blue-50 rounded-2xl">
+                <img src={title.badge} alt="badge" className="w-16 h-16 drop-shadow-sm" />
+            </div>
             <div>
-              <h2 className="text-xl font-bold">{title.title}</h2>
-              <p className="text-gray-600 text-sm">{title.desc}</p>
+              <h2 className="text-xl font-extrabold text-gray-800">{title.title}</h2>
+              <p className="text-gray-500 text-sm leading-tight mt-1">{title.desc}</p>
             </div>
           </div>
 
           {title && nextTitle && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-700 font-medium">
-                Progresso para: <span className="font-bold">{nextTitle.title}</span>
-              </p>
+            <div className="mt-5">
+              <div className="flex justify-between items-end mb-2">
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+                  Próximo: <span className="text-blue-600">{nextTitle.title}</span>
+                </p>
+                <p className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded-lg">
+                  {score} / {nextTitle.minScore} pts
+                </p>
+              </div>
 
-              <div className="w-full bg-gray-200 h-3 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden shadow-inner">
                 <div
-                  className="h-full bg-blue-500 transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-700 ease-out rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-
-              <p className="text-xs text-gray-600 mt-1">
-                {score} / {nextTitle.minScore} pontos
-              </p>
             </div>
           )}
         </div>
 
-       <div className="grid grid-cols-3 gap-3">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center text-center gap-1 hover:shadow-md transition-shadow">
+                <Coins size={28} className="text-yellow-500 mb-1" strokeWidth={2.5} />
+                <p className="text-xl font-black text-gray-800">{coins}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Moedas</p>
+            </div>
 
-         <div className="bg-white rounded-xl lg:rounded-full shadow-md border border-black/10 p-3 flex items-center gap-2">
-           <Coins size={36} color="#fca311" strokeWidth={2.75} />
-           <div>
-             <p className="text-gray-700 text-xs">Moedas</p>
-             <p className="text-xl font-bold">{coins}</p>
-           </div>
-         </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center text-center gap-1 hover:shadow-md transition-shadow">
+                <Swords size={28} className="text-blue-500 mb-1" strokeWidth={2.5} />
+                <p className="text-xl font-black text-gray-800">{score}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Pontos</p>
+            </div>
 
-         <div className="bg-white rounded-xl lg:rounded-full shadow-md border border-black/10 p-3 flex items-center gap-2">
-           <Swords size={36} color="#0080ff" strokeWidth={2.75} />
-           <div>
-             <p className="text-gray-700 text-xs">Pontos</p>
-             <p className="text-xl font-bold">{score}</p>
-           </div>
-         </div>
-
-         <div className="bg-white rounded-xl lg:rounded-full shadow-md border border-black/10 p-3 flex items-center gap-2">
-           <Zap size={36} color="#efbb50" strokeWidth={2.75} />
-           <div>
-             <p className="text-gray-700 text-xs">Boosters</p>
-             <p className="text-xl font-bold">{boosters}</p>
-           </div>
-         </div>
-
-       </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col items-center justify-center text-center gap-1 hover:shadow-md transition-shadow">
+                <Zap size={28} className="text-orange-400 mb-1" strokeWidth={2.5} />
+                <p className="text-xl font-black text-gray-800">{boosters}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Boosters</p>
+            </div>
+        </div>
 
         {/* badges gallery */}
-        <div className="bg-white rounded-2xl shadow-md border border-black/10 p-5">
-          <h3 className="text-xl font-bold mb-3">Coleção de Títulos</h3>
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
+          <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">
+              Sua Coleção
+          </h3>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-y-6 gap-x-2">
             {TITLES.map((t) => {
               const unlocked = score >= t.minScore;
               return (
-                <div key={t.title} className="flex flex-col items-center">
-                  <div className="relative">
+                <div key={t.title} className="flex flex-col items-center group">
+                  <div className="relative mb-2">
                     <img
                       src={t.badge}
                       alt={t.title}
-                      className={`w-12 h-12 rounded-md transition-all ${unlocked ? "opacity-100 scale-100" : "opacity-30 grayscale scale-95"}`}
+                      className={`w-14 h-14 transition-all duration-300 ${
+                          unlocked
+                          ? "opacity-100 scale-100 drop-shadow-md group-hover:scale-110"
+                          : "opacity-20 grayscale scale-90"
+                      }`}
                     />
                     {!unlocked && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <Lock className="w-5 h-5 text-black/60" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-gray-200/80 p-1.5 rounded-full">
+                            <Lock className="w-4 h-4 text-gray-500" />
+                        </div>
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-center mt-1">{t.title}</p>
+                  <p className={`text-[10px] text-center font-medium leading-tight px-1 ${unlocked ? "text-gray-700" : "text-gray-400"}`}>
+                      {t.title}
+                  </p>
                 </div>
               );
             })}
@@ -238,22 +263,23 @@ export default function ProfilePage() {
 
         {/* level-up toast */}
         {showLevelUp && (
-          <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none">
-            <div className="absolute inset-0 animate-fadeInEpic"></div>
+          <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none p-4">
+            <div className="absolute inset-0 animate-fadeInEpic bg-black/20 backdrop-blur-sm"></div>
 
-            <div className="relative bg-white rounded-2xl px-6 py-5 shadow-2xl animate-fadeInEpic scale-100 text-center">
+            <div className="relative bg-white rounded-3xl px-8 py-8 shadow-2xl animate-fadeInEpic scale-100 text-center w-full max-w-sm border-4 border-yellow-100">
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="absolute w-28 h-28 bg-yellow-300 rounded-full blur-xl opacity-30 animate-badgeGlow"></div>
+                <div className="absolute w-40 h-40 bg-yellow-300 rounded-full blur-2xl opacity-40 animate-badgeGlow"></div>
               </div>
 
-              {Array.from({ length: 4 }).map((_, i) => (
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="absolute w-10 h-10 bg-yellow-200 rounded-full opacity-0 blur-md"
+                  className="absolute w-3 h-3 bg-yellow-400 rounded-full opacity-0"
                   style={{
-                    animation: `particles 1.4s ease-out ${i * 0.1}s`,
-                    left: ["-40px", "40px", "-20px", "20px"][i],
-                    top: ["-20px", "-20px", "40px", "40px"][i],
+                    animation: `particles 1.2s ease-out ${i * 0.1}s`,
+                    left: "50%",
+                    top: "50%",
+                    transform: `rotate(${i * 60}deg) translate(80px)`,
                   }}
                 ></div>
               ))}
@@ -261,13 +287,13 @@ export default function ProfilePage() {
               <img
                 src={title.badge}
                 alt="badge"
-                className="relative z-10 w-24 h-24 mx-auto animate-badgePop"
+                className="relative z-10 w-32 h-32 mx-auto animate-badgePop drop-shadow-xl"
               />
 
-              <h2 className="relative z-10 mt-3 text-xl font-extrabold text-gray-900 animate-floatUp">
-                Novo Título Desbloqueado!
+              <h2 className="relative z-10 mt-6 text-2xl font-black text-gray-800 animate-floatUp uppercase tracking-tight">
+                Novo Título!
               </h2>
-              <p className="relative z-10 text-gray-700 animate-floatUp" style={{ animationDelay: "0.6s" }}>
+              <p className="relative z-10 text-blue-600 font-bold text-lg animate-floatUp mt-1" style={{ animationDelay: "0.2s" }}>
                 {title.title}
               </p>
             </div>

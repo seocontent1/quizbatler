@@ -4,7 +4,6 @@ import AttackEffect from "@/components/AttackEffect";
 import { useRef, useState, useCallback, useEffect } from "react";
 import RevealLightEffect from "@/components/RevealLightEffect";
 
-// 🚀 IMPORT DAS IMAGENS PARA PRELOAD
 import EFFECT_IMAGE from "/character_sprites/efect.svg";
 import POW_IMAGE from "/character_sprites/pow.svg";
 
@@ -41,7 +40,6 @@ export default function BattleArena({
   setShowHolyBlast,
 }: BattleArenaProps) {
 
-  // 🚀 PRELOAD DAS IMAGENS DE EFEITOS
   useEffect(() => {
     [EFFECT_IMAGE, POW_IMAGE].forEach(src => {
       const img = new Image();
@@ -104,7 +102,6 @@ export default function BattleArena({
         zIndex: 9999,
       }}
     >
-      {/* 🚀 USANDO A IMAGEM IMPORTADA */}
       <img src={EFFECT_IMAGE} className="w-full h-full" alt="effect" />
     </div>
   ));
@@ -112,10 +109,9 @@ export default function BattleArena({
   return (
     <div ref={arenaRef} data-id="arena-root" className="relative w-full h-full">
 
-      {/* RENDERIZA O ATAQUE AQUI, FORA DOS PERSONAGENS */}
       {holyBlastData && (
         <AttackEffect
-          image={POW_IMAGE} // 🚀 USANDO A IMAGEM IMPORTADA
+          image={POW_IMAGE}
           startX={holyBlastData.startX}
           startY={holyBlastData.startY}
           distX={holyBlastData.distX}
@@ -129,7 +125,6 @@ export default function BattleArena({
 
       <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:justify-center sm:gap-40 items-start">
 
-        {/* OPONENTE */}
         <div className="flex flex-col items-center gap-2 relative min-w-0 mt-4">
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[9999]">
             {particleElements}
@@ -154,7 +149,6 @@ export default function BattleArena({
           </div>
         </div>
 
-        {/* PLAYER */}
         <div className="flex flex-col items-center gap-2 relative min-w-0 mt-4">
 
           <div className="drop-shadow-[0_0_10px_rgba(255,255,0,0.8)]">
