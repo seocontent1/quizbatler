@@ -12,7 +12,7 @@ export default function QuestionCard({ question, roundNumber, totalRounds, isVis
   return (
     <Card
       className={cn(
-        "mt-8 p-4 mx-auto",
+        "p-4 mx-auto",
         isVisible ? "scale-100" : "scale-95"
       )}
       data-testid="card-question"

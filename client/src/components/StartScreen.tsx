@@ -130,8 +130,8 @@ export default function StartScreen({ onStart, boostsLeft }: StartScreenProps) {
     <div className="min-h-screen flex flex-col pb-28 items-center justify-start relative bg-[#f5f6fa] font-sans">
 
       {/* 🔵 BACKGROUND CURVADO & DECORAÇÃO */}
-      <div className="absolute top-0 left-0 w-full h-[45vh] bg-gradient-to-b from-[#003997] to-blue-500 z-0 rounded-b-[50px] shadow-2xl overflow-hidden">
-         <div className="absolute inset-0 opacity-10 bg-[url('/character_sprites/bg.svg')] bg-cover bg-center mix-blend-overlay"></div>
+      <div className="absolute top-0 left-0 w-full h-[45vh] bg-gradient-to-b from-[#0056e6] to-[#0235a6] z-0 rounded-b-[50px] shadow-2xl overflow-hidden">
+         <div className="absolute inset-0 opacity-10 bg-[url('/character_sprites/bg.svg')] bg-cover bg-center"></div>
          {/* Partículas decorativas */}
          <div className="absolute top-10 left-10 w-20 h-20 bg-white/5 rounded-full blur-2xl"></div>
          <div className="absolute bottom-10 right-10 w-32 h-32 bg-yellow-400/10 rounded-full blur-3xl"></div>

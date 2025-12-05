@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import BattleArena from "@/components/BattleArena";
 import QuestionCard from "@/components/QuestionCard";
 import AnswerButton from "@/components/AnswerButton";
-import ScoreDisplay from "@/components/ScoreDisplay";
 import GameOverModal from "@/components/GameOverModal";
 import StartScreen from "@/components/StartScreen";
 import Timer from "@/components/Timer";
@@ -13,9 +12,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Swords, Zap, Crown, Eye, ClockPlus } from "lucide-react";
+import { Swords, Zap, Crown, Eye, ClockPlus, ArrowLeft, LogOut, AlertTriangle, Snowflake, Trophy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { loginWithGoogle } from "@/services/auth";
+import { motion } from "framer-motion";
 
 //sprites
 import PLAYER_IDLE from "/character_sprites/jesus.png";
@@ -472,10 +472,7 @@ export default function QuizGame() {
       return;
     }
 
-    console.log(`🔍 Tentando salvar streak: ${streak} para email: ${user.email}`);
-
     try {
-      // Busca o best_streak atual do usuário
       const { data: currentData, error: fetchError } = await supabase
         .from("scores")
         .select("best_streak")
@@ -488,24 +485,12 @@ export default function QuizGame() {
       }
 
       const currentBest = currentData?.best_streak || 0;
-      console.log(`📊 Best streak atual no banco: ${currentBest}`);
 
-      // Só atualiza se o novo streak for maior
       if (streak > currentBest) {
-        const { data: updateData, error: updateError } = await supabase
+        await supabase
           .from("scores")
           .update({ best_streak: streak })
-          .eq("email", user.email)
-          .select();
-
-        if (updateError) {
-          console.error("❌ Erro ao atualizar best_streak:", updateError);
-        } else {
-          console.log(`✅ Best streak atualizado de ${currentBest} para ${streak}`);
-          console.log("📦 Dados atualizados:", updateData);
-        }
-      } else {
-        console.log(`ℹ️ Streak ${streak} não é maior que ${currentBest} - não atualizado`);
+          .eq("email", user.email);
       }
     } catch (error) {
       console.error("❌ Erro geral ao atualizar best_streak:", error);
@@ -528,11 +513,9 @@ export default function QuizGame() {
       setCorrectAnswers(prev => prev + 1);
       setSessionCoins(prev => prev + 3);
 
-      // 🔥 INCREMENTAR STREAK DA PARTIDA
       const newStreak = currentMatchStreak + 1;
       setCurrentMatchStreak(newStreak);
 
-      // 🔥 ATUALIZAR MELHOR STREAK DA PARTIDA
       if (newStreak > bestMatchStreak) {
         setBestMatchStreak(newStreak);
       }
@@ -568,17 +551,14 @@ export default function QuizGame() {
       setQuestionVisible(false);
 
     } else {
-      // 🔥 ERROU: QUEBRA A STREAK
       setAnswerState("incorrect");
       setCurrentStreak((prev) => prev + 1);
       setIncorrectAnswers(prev => prev + 1);
 
-      // 🔥 SALVAR BEST STREAK ANTES DE RESETAR
       if (currentMatchStreak > 0) {
         await updateBestStreakInDB(currentMatchStreak);
       }
 
-      // 🔥 RESETAR STREAK DA PARTIDA
       setCurrentMatchStreak(0);
 
       setOpponentAnimation("attack");
@@ -636,7 +616,6 @@ export default function QuizGame() {
     setAnswerState("incorrect");
     setIncorrectAnswers(prev => prev + 1);
 
-    // 🔥 TIMEOUT TAMBÉM QUEBRA A STREAK
     if (currentMatchStreak > 0) {
       updateBestStreakInDB(currentMatchStreak);
     }
@@ -677,16 +656,6 @@ export default function QuizGame() {
     timeoutsRef.current.push(tAdvance2);
   };
 
-  const addCoinsToUser = async (amount: number) => {
-    try {
-      await supabase.rpc("add_coins_to_inventory", {
-        amount_to_add: amount
-      });
-    } catch (error) {
-      console.error("Erro ao adicionar moedas:", error);
-    }
-  };
-
   useEffect(() => {
     const handleGameoverCoins = async () => {
       if (coinsAwardedRef.current) return;
@@ -695,15 +664,10 @@ export default function QuizGame() {
       coinsAwardedRef.current = true;
       setGameState("gameover");
 
-      // 🔥 SALVAR BEST STREAK NO FINAL DA PARTIDA
       const finalBest = Math.max(currentMatchStreak, bestMatchStreak);
-      console.log(`🎯 Final da partida - currentMatchStreak: ${currentMatchStreak}, bestMatchStreak: ${bestMatchStreak}, finalBest: ${finalBest}`);
 
       if (finalBest > 0) {
-        console.log(`💾 Salvando best streak: ${finalBest}`);
         await updateBestStreakInDB(finalBest);
-      } else {
-        console.log("⚠️ Nenhuma streak para salvar (finalBest = 0)");
       }
 
       if (!guestMode && user) {
@@ -718,16 +682,10 @@ export default function QuizGame() {
 
       if (!guestMode && user && totalEarned > 0) {
         try {
-          const { data, error } = await supabase.rpc("add_coins_to_inventory", {
+          await supabase.rpc("add_coins_to_inventory", {
             p_amount: totalEarned,
             p_user_id: user.id,
           });
-
-          if (error) {
-            console.error("Erro RPC add_coins_to_inventory:", error);
-          } else {
-            console.log("RPC add_coins_to_inventory retornou:", data);
-          }
         } catch (err) {
           console.error("Erro ao chamar RPC add_coins_to_inventory:", err);
         }
@@ -752,165 +710,185 @@ export default function QuizGame() {
 
   if (!currentQuestion) {
     return (
-      <div className="min-h-screen p-4">
-        <p>Carregando perguntas...</p>
+      <div className="min-h-screen p-4 flex items-center justify-center bg-[#f0f2f5]">
+        <p className="text-gray-500 animate-pulse">Carregando perguntas...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-1 bg-gradient-to-b from-background via-background to-muted/10">
-      <div className="max-w-6xl mx-auto p-1 sm:p-2">
-        <div className="max-w-3xl mx-auto space-y-3">
-          <ScoreDisplay
-            correctAnswers={correctAnswers}
-            currentStreak={currentStreak}
-            totalScore={score}
-            boostsLeft={boostsLeft}
-          />
+    <div className="min-h-screen bg-[#f0f2f5] font-sans pb-10 relative overflow-hidden">
 
-          {/* 🔥 EXIBIR STREAK ATUAL DA PARTIDA - SÓ A PARTIR DE 6 */}
-          {currentMatchStreak >= 6 && (
-            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-2 rounded-lg text-center font-bold shadow-lg animate-pulse">
-              🔥 Sequência Perfeita: {currentMatchStreak} acertos consecutivos!
-            </div>
-          )}
+      {/* 🔵 CABEÇALHO AZUL (Fundo) */}
+      <div className="bg-gradient-to-b from-[#0056e6] to-[#0235a6] h-[220px] rounded-b-[50px] shadow-2xl relative overflow-hidden">
+         <div className="absolute inset-0 opacity-10 bg-[url('/character_sprites/bg.svg')] bg-cover bg-center"></div>
+         <div className="absolute top-0 left-0 w-full h-full bg-blue-900/10 backdrop-blur-[1px]"></div>
 
-          <div className="flex justify-end mb-4">
+         {/* Botão Sair */}
+         <div className="relative z-10 p-4">
             <button
               onClick={openConfirmPopup}
-              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm"
-              data-testid="btn-return-home"
+              className="flex items-center gap-2 text-white/80 hover:text-white transition-colors bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-md"
             >
-              Voltar ao início
+              <ArrowLeft size={18} />
+              <span className="text-xs font-bold uppercase">Sair</span>
             </button>
-          </div>
+         </div>
+                  {/* Barra de Progresso */}
+                  <div className="bg-gray-200 h-2 rounded-full overflow-hidden w-full max-w-[20rem] mx-auto mb-2">
+                     <div
+                       className="h-full bg-green-500 transition-all duration-500 ease-out"
+                       style={{ width: `${progress}%` }}
+                     ></div>
+                  </div>
+      </div>
 
-          <Progress value={progress} className="mb-8 h-4" data-testid="progress-quiz" />
-          <BattleArena
-            playerLife={playerLife}
-            playerImgKey={playerImgKey}
-            opponentLife={opponentLife}
-            maxLife={maxLife}
-            playerAnimation={playerAnimation}
-            opponentAnimation={opponentAnimation}
-            playerImage={playerImage}
-            opponentImage={opponentImage}
-            impactParticles={impactParticles}
-            setImpactParticles={setImpactParticles}
-            showHolyBlast={showHolyBlast}
-            setShowHolyBlast={setShowHolyBlast}
-            showRevealEffect={showRevealEffect}
-            revealEffectData={revealEffectData}
-            setShowRevealEffect={setShowRevealEffect}
-          />
+      {/* 🏟️ ARENA FLUTUANTE */}
+      <div className="-mt-[140px] relative z-20 px-2 sm:px-4 mb-4">
+         <motion.div
+           initial={{ y: 20, opacity: 0 }}
+           animate={{ y: 0, opacity: 1 }}
+           className="bg-white/40 backdrop-blur-md rounded-[30px] shadow-lg border border-white/40 p-2 sm:p-4 max-w-4xl mx-auto overflow-hidden relative"
+         >
+            <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent pointer-events-none"></div>
 
-          <div className="mt-1 mb-1">
+            {/* ⏱️ TEMPO (Posicionado no centro da arena) com estilo personalizado */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 scale-90 sm:scale-100">
+                <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center [&_svg]:hidden text-white font-black text-xl">
+                    <Timer
+                        duration={TIME_PER_LEVEL[difficulty]}
+                        extraTimeEvent={extraTimeEvent}
+                        extraTimeAmount={extraTimeAmount}
+                        onTimeout={handleTimeout}
+                        isPaused={timerPaused || isFrozen}
+                        reset={timerReset}
+                    />
+                </div>
+            </div>
+
+            <BattleArena
+                playerLife={playerLife}
+                playerImgKey={playerImgKey}
+                opponentLife={opponentLife}
+                maxLife={maxLife}
+                playerAnimation={playerAnimation}
+                opponentAnimation={opponentAnimation}
+                playerImage={playerImage}
+                opponentImage={opponentImage}
+                impactParticles={impactParticles}
+                setImpactParticles={setImpactParticles}
+                showHolyBlast={showHolyBlast}
+                setShowHolyBlast={setShowHolyBlast}
+                showRevealEffect={showRevealEffect}
+                revealEffectData={revealEffectData}
+                setShowRevealEffect={setShowRevealEffect}
+            />
+         </motion.div>
+      </div>
+
+      {/* 🎮 CONTROLES E PLACAR ABAIXO DA ARENA */}
+      <div className="max-w-3xl mx-auto px-4 relative z-30 space-y-4">
+
+         {/* 📊 BARRA DE STATUS (Score + Streak) - AGORA AQUI EMBAIXO! */}
+         <div className="flex justify-between items-center bg-white rounded-2xl p-1 pr-[15px] pl-[15px] shadow-sm border border-gray-100 mb-2">
+             <div className="flex flex-col">
+                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sua Pontuação</span>
+                 <span className="text-3xl font-black text-blue-600 leading-none">{score}</span>
+             </div>
+
+             {/* Streak visual */}
+             <div className="flex items-center gap-2">
+                {currentMatchStreak >= 3 ? (
+                    <div className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md animate-bounce flex items-center gap-1">
+                        <Zap size={12} className="fill-white" />
+                        Combo: {currentMatchStreak}x
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-end">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">Acertos</span>
+                        <span className="text-xl font-bold text-gray-700">{correctAnswers}</span>
+                    </div>
+                )}
+             </div>
+         </div>
+
+         {/* ⚡ BOOSTERS */}
+         <div className="flex justify-center gap-3 mb-2 overflow-x-auto scrollbar-hide">
+            {boostsLeft > 0 ? (
+                <>
+                  <button
+                    onClick={() => { if(boostsLeft >= BOOST_COST[10]) addExtraTime(10); }}
+                    disabled={boostsLeft < BOOST_COST[10] || usedBoosts[10]}
+                    className="flex flex-col items-center gap-1 group disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95"
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-md border-2 border-white group-hover:scale-110 transition-transform">
+                        <ClockPlus size={20} className="text-white" />
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-500 bg-white px-1.5 rounded-md shadow-sm border border-gray-100">+10s</span>
+                  </button>
+
+                  <button
+                    onClick={() => { if(boostsLeft >= BOOST_COST[20]) addExtraTime(20); }}
+                    disabled={boostsLeft < BOOST_COST[20] || usedBoosts[20]}
+                    className="flex flex-col items-center gap-1 group disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95"
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center shadow-md border-2 border-white group-hover:scale-110 transition-transform">
+                        <ClockPlus size={20} className="text-white" />
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-500 bg-white px-1.5 rounded-md shadow-sm border border-gray-100">+20s</span>
+                  </button>
+
+                  <button
+                    onClick={useFreezer}
+                    disabled={usedFreezer || boostsLeft < 8 || selectedAnswer !== null}
+                    className="flex flex-col items-center gap-1 group disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95"
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center shadow-md border-2 border-white group-hover:scale-110 transition-transform">
+                        <Snowflake size={20} className="text-white" />
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-500 bg-white px-1.5 rounded-md shadow-sm border border-gray-100">Freeze</span>
+                  </button>
+
+                  <button
+                    onClick={useReveal}
+                    disabled={usedReveal || boostsLeft < REVEAL_COST || selectedAnswer !== null}
+                    className="flex flex-col items-center gap-1 group disabled:opacity-40 disabled:cursor-not-allowed transition-transform active:scale-95"
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-600 rounded-full flex items-center justify-center shadow-md border-2 border-white group-hover:scale-110 transition-transform">
+                        <Eye size={20} className="text-white" />
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-500 bg-white px-1.5 rounded-md shadow-sm border border-gray-100">Revelar</span>
+                  </button>
+                </>
+            ) : (
+                <div className="w-full">
+                    {isBlocked ? (
+                        <button onClick={() => setShowLoginModal(true)} className="w-full py-3 bg-yellow-400 rounded-xl font-bold text-black shadow-sm uppercase text-sm tracking-wide">
+                            Comprar Boosters
+                        </button>
+                    ) : (
+                        <Link href="/store">
+                            <button className="w-full py-3 bg-yellow-400 rounded-xl font-bold text-black shadow-sm uppercase text-sm tracking-wide hover:bg-yellow-500 transition-colors">
+                                🛒 Loja de Boosters
+                            </button>
+                        </Link>
+                    )}
+                </div>
+            )}
+         </div>
+
+         {/* ❓ CARTÃO DE PERGUNTA */}
+         <div className="mt-2">
             <QuestionCard
               question={currentQuestion.question}
               roundNumber={currentQuestionIndex + 1}
               totalRounds={currentQuestions.length}
               isVisible={questionVisible}
             />
-          </div>
+         </div>
 
-          <Timer
-            duration={TIME_PER_LEVEL[difficulty]}
-            extraTimeEvent={extraTimeEvent}
-            extraTimeAmount={extraTimeAmount}
-            onTimeout={handleTimeout}
-            isPaused={timerPaused || isFrozen}
-            reset={timerReset}
-          />
-
-          {boostsLeft > 0 ? (
-            <div className="flex flex-wrap gap-3 justify-center w-full">
-              <button
-                onClick={() => {
-                  const cost = BOOST_COST[10];
-                  if (boostsLeft < cost) return;
-                  addExtraTime(10);
-                }}
-                disabled={boostsLeft < BOOST_COST[10] || usedBoosts[10]}
-                className="px-1 py-1 bg-yellow-500 !border-none text-white rounded disabled:opacity-40"
-              >
-                <div className="flex items-center gap-1 w-full min-w-0">
-                  <ClockPlus className="w-3 h-3 text-white-500" />
-                  10s ⚡1
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  const cost = BOOST_COST[20];
-                  if (boostsLeft < cost) return;
-                  addExtraTime(20);
-                }}
-                disabled={boostsLeft < BOOST_COST[20] || usedBoosts[20]}
-                className="px-1 py-1 bg-orange-500 !border-none text-white rounded disabled:opacity-40"
-              >
-                <div className="flex items-center gap-1 w-full min-w-0">
-                  <ClockPlus className="w-3 h-3 text-white-500" />
-                  20s ⚡2
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  const cost = BOOST_COST[30];
-                  if (boostsLeft < cost) return;
-                  addExtraTime(30);
-                }}
-                disabled={boostsLeft < BOOST_COST[30] || usedBoosts[30]}
-                className="px-1 py-1 bg-red-500 text-white !border-none rounded disabled:opacity-40"
-              >
-                <div className="flex items-center gap-1 w-full min-w-0">
-                  <ClockPlus className="w-3 h-3 text-white-500" />
-                  30s ⚡3
-                </div>
-              </button>
-
-              <Button
-                onClick={useFreezer}
-                disabled={usedFreezer || boostsLeft < 8 || selectedAnswer !== null}
-                className="px-1 py-1 bg-blue-500 text-white !border-none rounded disabled:opacity-40"
-              >
-                <div className="flex items-center gap-1 w-full min-w-0">
-                  ❄️Freeze ⚡8
-                </div>
-              </Button>
-
-              <Button
-                onClick={useReveal}
-                disabled={usedReveal || boostsLeft < REVEAL_COST || selectedAnswer !== null}
-                className="px-3 py-2 bg-[#42e521] text-white !border-none rounded disabled:opacity-40"
-              >
-                <div className="flex items-center gap-1 w-full min-w-0">
-                  <Eye className="w-3 h-3 text-white-500" />
-                  Revelação ⚡10
-                </div>
-              </Button>
-            </div>
-          ) : (
-            <div className="justify-center w-full mt-4">
-              {isBlocked ? (
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="px-4 py-3 bg-[#ffbc42] w-full rounded-md font-semibold text-black"
-                >
-                  Comprar Booster
-                </button>
-              ) : (
-                <Link href="/store">
-                  <button className="px-4 py-3 bg-[#ffbc42] w-full rounded-md font-semibold text-black">
-                    Comprar Booster
-                  </button>
-                </Link>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+         {/* 🔘 RESPOSTAS */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-8">
             {currentQuestion.options.map((option: string, index: number) => (
               <AnswerButton
                 key={index}
@@ -929,18 +907,20 @@ export default function QuizGame() {
                 index={index}
               />
             ))}
-          </div>
-        </div>
+         </div>
       </div>
 
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-xl shadow-xl w-xs text-center">
-            <h2 className="text-lg font-bold mb-3">Sair do jogo?</h2>
-            <p className="mb-4">Você perderá todo o progresso do jogo!</p>
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center border-2 border-red-100">
+            <div className="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut size={24} />
+            </div>
+            <h2 className="text-lg font-bold mb-2 text-gray-800">Sair da batalha?</h2>
+            <p className="mb-6 text-sm text-gray-600">Você perderá todo o progresso atual.</p>
             <div className="flex gap-3 justify-center">
-              <button onClick={cancelReturn} className="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
-              <button onClick={confirmReturn} className="px-4 py-2 bg-red-500 text-white rounded-lg">Sair</button>
+              <button onClick={cancelReturn} className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancelar</button>
+              <button onClick={confirmReturn} className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors shadow-lg shadow-red-200">Sair</button>
             </div>
           </div>
         </div>
@@ -958,7 +938,7 @@ export default function QuizGame() {
       />
 
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
-        <DialogContent className="text-center max-w-sm">
+        <DialogContent className="text-center max-w-sm rounded-2xl">
           <DialogHeader className="text-left">
             <DialogTitle>Faça login para continuar</DialogTitle>
             <span className="text-sm text-muted-foreground">
@@ -970,25 +950,19 @@ export default function QuizGame() {
               await loginWithGoogle();
               setShowLoginModal(false);
             }}
-            className="w-full bg-blue-600 text-md text-white border-none"
+            className="w-full bg-blue-600 text-md text-white border-none py-6 rounded-xl"
           >
             Entrar com Google
           </Button>
-          <span className="text-md text-muted-foreground">
-            Participa de partidas Rankeadas, Rank global e pode comprar recursos!
-          </span>
           <Button
             onClick={() => {
               localStorage.setItem("guestMode", "true");
               setShowLoginModal(false);
             }}
-            className="w-full bg-[#b3dee2] text-md border-none"
+            className="w-full bg-[#b3dee2] text-md border-none py-6 rounded-xl text-blue-900"
           >
             Jogar como Convidado
           </Button>
-          <span className="text-md text-muted-foreground">
-            Não participa de partidas Rankeadas, nem Rank global e nem pode comprar recursos!
-          </span>
         </DialogContent>
       </Dialog>
     </div>
