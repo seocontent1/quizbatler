@@ -5,14 +5,13 @@ import AnswerButton from "@/components/AnswerButton";
 import GameOverModal from "@/components/GameOverModal";
 import StartScreen from "@/components/StartScreen";
 import Timer from "@/components/Timer";
-import { Progress } from "@/components/ui/progress";
 import { MOCK_QUESTIONS } from "@/data/question";
 import { submitScore } from "@/services/ranking";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Swords, Zap, Crown, Eye, ClockPlus, ArrowLeft, LogOut, AlertTriangle, Snowflake, Trophy } from "lucide-react";
+import { Swords, Zap, Crown, Eye, ClockPlus, ArrowLeft, LogOut, AlertTriangle, Snowflake, Trophy, ShoppingCart, Volume2, VolumeX } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { loginWithGoogle } from "@/services/auth";
 import { motion } from "framer-motion";
@@ -40,7 +39,6 @@ const TIME_PER_LEVEL = {
   super: 20,
 } as const;
 
-const COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const STORAGE_KEY = "quiz_progress_v1";
 type AnswerRecord = { id: string; ts: number };
 type ProgressStore = { answered: AnswerRecord[] };
@@ -69,13 +67,6 @@ function addAnswered(id: string) {
   } else {
     store.answered.push({ id, ts: Date.now() });
   }
-  saveProgress(store);
-}
-
-function pruneAnswered(olderThanMs: number) {
-  const store = loadProgress();
-  const cutoff = Date.now() - olderThanMs;
-  store.answered = store.answered.filter((rec) => rec.ts >= cutoff);
   saveProgress(store);
 }
 
@@ -115,24 +106,13 @@ function shuffleOptions(question: any) {
   };
 }
 
-function prepareQuestions(allQuestions: any[], difficulty?: string, amount?: number) {
-  let pool = allQuestions;
-  if (difficulty) {
-    pool = allQuestions.filter((q) => q.difficulty === difficulty);
-    if (pool.length === 0) pool = allQuestions;
-  }
-  const shuffled = shuffleArray(pool);
-  const selected = typeof amount === "number" ? shuffled.slice(0, amount) : shuffled;
-  return selected.map((q) => shuffleOptions(q));
-}
-
 type AnimationState = "idle" | "attack" | "hit" | "victory";
 
 export default function QuizGame() {
   const [boostsLeft, setBoostsLeft] = useState(0);
   const [timerPaused, setTimerPaused] = useState(false);
   const [usedFreezer, setUsedFreezer] = useState(false);
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const guestMode = localStorage.getItem("guestMode") === "true";
   const [extraTimeEvent, setExtraTimeEvent] = useState(0);
   const [extraTimeAmount, setExtraTimeAmount] = useState(0);
@@ -148,15 +128,18 @@ export default function QuizGame() {
   const [revealEffectData, setRevealEffectData] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // 🔥 NOVO: Rastreamento de streak na partida atual
+  // 🔥 Streak Control
   const [currentMatchStreak, setCurrentMatchStreak] = useState(0);
   const [bestMatchStreak, setBestMatchStreak] = useState(0);
+
+  // 🔊 SISTEMA DE ÁUDIO
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(false); // Começa desligado
 
   const openConfirmPopup = () => setShowConfirm(true);
   const cancelReturn = () => setShowConfirm(false);
 
   const [index, setIndex] = useState(0);
-  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const questions = MOCK_QUESTIONS as Question[];
 
@@ -173,6 +156,28 @@ export default function QuizGame() {
       img.src = src;
     });
   }, []);
+
+  // 1️⃣ Inicializa o player de áudio UMA VEZ só
+  useEffect(() => {
+    audioRef.current = new Audio();
+    audioRef.current.preload = "auto";
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
+  // 🛑 FUNÇÃO PARA PARAR O ÁUDIO
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.oncanplay = null;
+    }
+  };
 
   const confirmReturn = () => {
     setShowConfirm(false);
@@ -366,6 +371,52 @@ export default function QuizGame() {
   const currentQuestion = currentQuestions.length > 0 ? currentQuestions[currentQuestionIndex] : null;
   const progress = currentQuestions.length > 0 ? ((currentQuestionIndex + 1) / currentQuestions.length) * 100 : 0;
 
+  // 2️⃣ EFEITO DE ÁUDIO OTIMIZADO COM CONTROLE DE ESTADO
+  useEffect(() => {
+    // Se o áudio estiver desligado pelo usuário, para tudo e sai.
+    if (!isAudioEnabled) {
+      stopAudio();
+      return;
+    }
+
+    if (!currentQuestion || gameState !== "playing" || !questionVisible || !audioRef.current) {
+      return;
+    }
+
+    const audio = audioRef.current;
+
+    // 1. Limpa o anterior
+    stopAudio();
+
+    // 2. Define o novo caminho
+    const audioPath = `/audio_questions/id-${currentQuestion.id}.mp3`;
+
+    audio.src = audioPath;
+    audio.volume = 1.0;
+
+    // 3. Toca assim que for possível
+    const playWhenReady = () => {
+        audio.play().catch(e => console.warn("Erro ao tocar:", e));
+    };
+
+    audio.oncanplay = playWhenReady;
+    audio.load();
+
+    // --- PRELOAD NEXT ---
+    const nextIndex = (currentQuestionIndex + 1) % currentQuestions.length;
+    const nextQ = currentQuestions[nextIndex];
+    if (nextQ) {
+      const preloadLink = new Audio(`/audio_questions/${nextQ.id}.mp3`);
+      preloadLink.preload = "auto";
+    }
+
+    return () => {
+      audio.oncanplay = null;
+      audio.pause();
+    };
+
+  }, [currentQuestion, gameState, questionVisible, isAudioEnabled]); // 🔥 Adicionado isAudioEnabled
+
   const clearAllTimeouts = () => {
     timeoutsRef.current.forEach((id) => {
       try { clearTimeout(id); } catch (e) {}
@@ -392,12 +443,12 @@ export default function QuizGame() {
     setQuestionStartTime(Date.now());
     setUsedFreezer(false);
 
-    // 🔥 RESETAR STREAKS AO INICIAR
     setCurrentMatchStreak(0);
     setBestMatchStreak(0);
   };
 
   const resetGame = () => {
+    stopAudio();
     clearAllTimeouts();
     setCurrentQuestionIndex(0);
     setScore(0);
@@ -415,12 +466,12 @@ export default function QuizGame() {
     setExtraTimeEvent(0);
     setExtraTimeAmount(0);
 
-    // 🔥 RESETAR STREAKS
     setCurrentMatchStreak(0);
     setBestMatchStreak(0);
   };
 
   const handleRestart = () => {
+    stopAudio();
     clearAllTimeouts();
     coinsAwardedRef.current = false;
     setEarnedThisMatch(0);
@@ -434,10 +485,10 @@ export default function QuizGame() {
     setUsedReveal(false);
     setShowRevealEffect(false);
     setRevealEffectData(null);
-
   };
 
   const handleClose = () => {
+    stopAudio();
     clearAllTimeouts();
     coinsAwardedRef.current = false;
     setEarnedThisMatch(0);
@@ -451,6 +502,7 @@ export default function QuizGame() {
   };
 
   const handleReturnHome = () => {
+    stopAudio();
     clearAllTimeouts();
     coinsAwardedRef.current = false;
     setEarnedThisMatch(0);
@@ -465,12 +517,8 @@ export default function QuizGame() {
     setRevealEffectData(null);
   };
 
-  // 🔥 FUNÇÃO PARA SALVAR BEST STREAK NO BANCO
   const updateBestStreakInDB = async (streak: number) => {
-    if (!user || guestMode) {
-      console.log("⚠️ Usuário não logado ou modo guest - streak não salvo");
-      return;
-    }
+    if (!user || guestMode) return;
 
     try {
       const { data: currentData, error: fetchError } = await supabase
@@ -479,10 +527,7 @@ export default function QuizGame() {
         .eq("email", user.email)
         .single();
 
-      if (fetchError) {
-        console.error("❌ Erro ao buscar best_streak:", fetchError);
-        return;
-      }
+      if (fetchError) return;
 
       const currentBest = currentData?.best_streak || 0;
 
@@ -500,6 +545,9 @@ export default function QuizGame() {
   const handleAnswer = async (answerIndex: number) => {
     if (!currentQuestion) return;
     if (selectedAnswer !== null) return;
+
+    stopAudio();
+
     setPlayerAnimation("idle");
     setPlayerImage(PLAYER_IDLE);
     setTimerPaused(false);
@@ -607,6 +655,9 @@ export default function QuizGame() {
 
   const handleTimeout = () => {
     if (!currentQuestion) return;
+
+    stopAudio();
+
     setPlayerAnimation("idle");
     setPlayerImage(PLAYER_IDLE);
     setRevealAnswer(false);
@@ -719,7 +770,7 @@ export default function QuizGame() {
   return (
     <div className="min-h-screen bg-[#f0f2f5] font-sans pb-10 relative overflow-hidden">
 
-      {/* 🔵 CABEÇALHO AZUL (Fundo) */}
+      {/* 🔵 CABEÇALHO AZUL */}
       <div className="bg-gradient-to-b from-[#0056e6] to-[#0235a6] h-[220px] rounded-b-[50px] shadow-2xl relative overflow-hidden">
          <div className="absolute inset-0 opacity-10 bg-[url('/character_sprites/bg.svg')] bg-cover bg-center"></div>
          <div className="absolute top-0 left-0 w-full h-full bg-blue-900/10 backdrop-blur-[1px]"></div>
@@ -734,13 +785,13 @@ export default function QuizGame() {
               <span className="text-xs font-bold uppercase">Sair</span>
             </button>
          </div>
-                  {/* Barra de Progresso */}
-                  <div className="bg-gray-200 h-2 rounded-full overflow-hidden w-full max-w-[20rem] mx-auto mb-2">
-                     <div
-                       className="h-full bg-green-500 transition-all duration-500 ease-out"
-                       style={{ width: `${progress}%` }}
-                     ></div>
-                  </div>
+
+         <div className="bg-gray-200 h-2 rounded-full overflow-hidden w-full max-w-[20rem] mx-auto mb-2">
+            <div
+              className="h-full bg-green-500 transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            ></div>
+         </div>
       </div>
 
       {/* 🏟️ ARENA FLUTUANTE */}
@@ -752,7 +803,6 @@ export default function QuizGame() {
          >
             <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent pointer-events-none"></div>
 
-            {/* ⏱️ TEMPO (Posicionado no centro da arena) com estilo personalizado */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 scale-90 sm:scale-100">
                 <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center [&_svg]:hidden text-white font-black text-xl">
                     <Timer
@@ -786,17 +836,16 @@ export default function QuizGame() {
          </motion.div>
       </div>
 
-      {/* 🎮 CONTROLES E PLACAR ABAIXO DA ARENA */}
+      {/* 🎮 CONTROLES E PLACAR */}
       <div className="max-w-3xl mx-auto px-4 relative z-30 space-y-4">
 
-         {/* 📊 BARRA DE STATUS (Score + Streak) - AGORA AQUI EMBAIXO! */}
+         {/* 📊 BARRA DE STATUS */}
          <div className="flex justify-between items-center bg-white rounded-2xl p-1 pr-[15px] pl-[15px] shadow-sm border border-gray-100 mb-2">
              <div className="flex flex-col">
                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Sua Pontuação</span>
                  <span className="text-3xl font-black text-blue-600 leading-none">{score}</span>
              </div>
 
-             {/* Streak visual */}
              <div className="flex items-center gap-2">
                 {currentMatchStreak >= 3 ? (
                     <div className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md animate-bounce flex items-center gap-1">
@@ -862,14 +911,20 @@ export default function QuizGame() {
                 </>
             ) : (
                 <div className="w-full">
+                    {/* 🔥 BOTÕES DE LOJA ESTILIZADOS */}
                     {isBlocked ? (
-                        <button onClick={() => setShowLoginModal(true)} className="w-full py-3 bg-yellow-400 rounded-xl font-bold text-black shadow-sm uppercase text-sm tracking-wide">
+                        <button
+                            onClick={() => setShowLoginModal(true)}
+                            className="w-full py-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-md font-black text-white shadow-lg border-b-4 border-orange-600 active:border-b-0 active:translate-y-1 transition-all uppercase text-sm tracking-wider flex items-center justify-center gap-2"
+                        >
+                            <ShoppingCart size={20} />
                             Comprar Boosters
                         </button>
                     ) : (
                         <Link href="/store">
-                            <button className="w-full py-3 bg-yellow-400 rounded-xl font-bold text-black shadow-sm uppercase text-sm tracking-wide hover:bg-yellow-500 transition-colors">
-                                🛒 Loja de Boosters
+                            <button className="w-full py-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-md font-black text-white shadow-lg border-b-4 border-orange-600 active:border-b-0 active:translate-y-1 transition-all uppercase text-sm tracking-wider flex items-center justify-center gap-2 hover:brightness-110">
+                                <ShoppingCart size={20} />
+                                Loja de Boosters
                             </button>
                         </Link>
                     )}
@@ -884,6 +939,8 @@ export default function QuizGame() {
               roundNumber={currentQuestionIndex + 1}
               totalRounds={currentQuestions.length}
               isVisible={questionVisible}
+              isAudioEnabled={isAudioEnabled}
+              onToggleAudio={() => setIsAudioEnabled(!isAudioEnabled)}
             />
          </div>
 

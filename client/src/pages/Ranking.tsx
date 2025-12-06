@@ -229,7 +229,7 @@ export default function Ranking() {
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white shadow-xl rounded-2xl p-4 w-36 text-center scale-110 z-20 flex flex-col items-center h-[250px] justify-between transform -translate-y-4"
+              className="bg-white shadow-xl rounded-2xl p-2 w-36 text-center scale-110 z-20 flex flex-col items-center h-[250px] justify-between transform -translate-y-4"
             >
               <div className="flex flex-col items-center w-full">
                 <div className="bg-yellow-400 text-white w-12 h-12 flex items-center justify-center rounded-full mx-auto -mt-8 font-bold text-xl ring-4 ring-[#f5f6fa]">1º</div>

@@ -242,8 +242,8 @@ export default function Store() {
                   onClick={() => buyBoostWithCoins(pack.coinPrice, pack.amount)}
                   className={`w-full py-2.5 border-2 rounded-xl font-bold text-xs flex justify-center items-center gap-2 transition-colors active:scale-[0.98] ${
                     coins !== null && coins >= pack.coinPrice
-                      ? "border-green-100 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-200"
-                      : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60"
+                      ? "border-green-100 bg-green-200 text-green-700 hover:bg-green-100 hover:border-green-200"
+                      : "border-gray-100 bg-gray-300 text-gray-600 cursor-not-allowed opacity-60"
                   }`}
                 >
                   <Coins size={14} className={coins !== null && coins >= pack.coinPrice ? "fill-green-600" : ""} />
